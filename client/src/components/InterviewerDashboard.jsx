@@ -28,7 +28,7 @@ import { Card, CardContent, CardHeader } from './ui/Card';
 import Badge from './ui/Badge';
 import ThemeToggle from './ui/ThemeToggle';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+import { BACKEND_URL } from '../utils/config';
 
 const InterviewerDashboard = () => {
   const [interviews, setInterviews] = useState([]);
@@ -57,6 +57,10 @@ const InterviewerDashboard = () => {
 
     setLoading(true);
     try {
+      // Debug logging
+      console.log('About to make auth request to:', `${BACKEND_URL}/api/interviews/authenticate-interviewer`);
+      console.log('BACKEND_URL value:', BACKEND_URL);
+      
       // First authenticate the interviewer
       const authResponse = await axios.post(`${BACKEND_URL}/api/interviews/authenticate-interviewer`, {
         email: interviewerEmail

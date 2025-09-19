@@ -5,7 +5,7 @@ import VideoCapture from './VideoCapture';
 import EventLog from './EventLog';
 import ReportDownload from './ReportDownload';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+import { BACKEND_URL } from '../utils/config';
 const PYTHON_SERVICE_URL = 'http://localhost:8000';
 
 const LiveInterviewView = ({ interview, onBack, onRefresh }) => {

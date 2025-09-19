@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+import { BACKEND_URL } from '../utils/config';
 
 const CandidateReport = ({ interviewId, onBack }) => {
   const [report, setReport] = useState(null);

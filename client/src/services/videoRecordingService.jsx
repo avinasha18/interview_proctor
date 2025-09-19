@@ -6,7 +6,7 @@ class VideoRecordingService {
     this.isRecording = false;
     this.recordingChunks = [];
     this.recordingInterval = null;
-    this.BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+    this.BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://interview-proctor-server.vercel.app';
   }
 
   async startRecording(interviewId, candidateName) {
