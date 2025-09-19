@@ -28,7 +28,7 @@ import { Card, CardContent, CardHeader } from './ui/Card';
 import Badge from './ui/Badge';
 import ThemeToggle from './ui/ThemeToggle';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = process.env.VITE_BACKEND_URL;
 
 const InterviewerDashboard = () => {
   const [interviews, setInterviews] = useState([]);

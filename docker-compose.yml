@@ -1,87 +1,73 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7.0
-    container_name: proctoring-mongodb
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password123
-      MONGO_INITDB_DATABASE: proctoring
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - proctoring-network
-
-  # Node.js Backend
-  backend:
-    build: ./server
-    container_name: proctoring-backend
-    restart: unless-stopped
-    environment:
-      MONGODB_URI: mongodb://admin:password123@mongodb:27017/proctoring?authSource=admin
-      PORT: 3001
-      NODE_ENV: production
-      CLIENT_URL: http://localhost:3000
-      PYTHON_SERVICE_URL: http://python-service:8000
-    ports:
-      - "3001:3001"
-    depends_on:
-      - mongodb
-    networks:
-      - proctoring-network
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # Python ML Service
-  python-service:
-    build: ./app
-    container_name: proctoring-python-service
-    restart: unless-stopped
-    environment:
-      BACKEND_URL: http://backend:3001
-      HOST: 0.0.0.0
-      PORT: 8000
+  ml-service:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    depends_on:
-      - backend
-    networks:
-      - proctoring-network
+    environment:
+      - PORT=8000
+      - BACKEND_URL=http://server:3001
+    volumes:
+      - ./app:/app
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
 
-  # React Frontend
-  frontend:
-    build: ./client
-    container_name: proctoring-frontend
-    restart: unless-stopped
+  # Node.js Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     ports:
-      - "3000:80"
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongo:27017/exam-proctor
+      - CLIENT_URL=http://localhost:5173
+      - ML_SERVICE_URL=http://ml-service:8000
     depends_on:
-      - backend
-      - python-service
-    networks:
-      - proctoring-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - mongo
+      - ml-service
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+  # MongoDB Database
+  mongo:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=exam-proctor
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  # React Client (for development)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_BACKEND_URL=http://localhost:3001
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - server
 
 volumes:
-  mongodb_data:
-
-networks:
-  proctoring-network:
-    driver: bridge
+  mongo_data:

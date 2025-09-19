@@ -4,7 +4,7 @@ import axios from 'axios';
 import EventLog from './EventLog';
 import ReportDownload from './ReportDownload';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = process.env.VITE_BACKEND_URL;
 
 const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
   const [socket, setSocket] = useState(null);

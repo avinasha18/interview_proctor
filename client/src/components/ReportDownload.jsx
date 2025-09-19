@@ -16,7 +16,7 @@ const ReportDownload = ({ interviewId }) => {
 
     try {
       const response = await axios.get(
-        `http://localhost:3001/api/reports/${interviewId}/${format}`,
+        `${process.env.VITE_BACKEND_URL}/api/reports/${interviewId}/${format}`,
         { responseType: 'blob' }
       );
 
@@ -59,7 +59,7 @@ const ReportDownload = ({ interviewId }) => {
 
     try {
       const response = await axios.get(
-        `http://localhost:3001/api/reports/${interviewId}/summary`
+        `${process.env.VITE_BACKEND_URL}/api/reports/${interviewId}/summary`
       );
 
       if (response.data.success) {
