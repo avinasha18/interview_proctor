@@ -20,10 +20,21 @@ router.get('/:id/pdf', async (req, res) => {
 
     // Create PDF
     const doc = new PDFDocument();
+    
+    // Set headers before piping
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="proctoring-report-${interview.sessionId}.pdf"`);
 
+    // Pipe the document to response
     doc.pipe(res);
+    
+    // Handle stream errors
+    doc.on('error', (err) => {
+      console.error('PDF stream error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'PDF generation stream error' });
+      }
+    });
 
     // Title
     doc.fontSize(20).text('Proctoring Report', { align: 'center' });
@@ -48,11 +59,18 @@ router.get('/:id/pdf', async (req, res) => {
     
     const eventTypes = {};
     const suspiciousObjects = [];
+    const objectCounts = {};
+    
     events.forEach(event => {
       eventTypes[event.eventType] = (eventTypes[event.eventType] || 0) + 1;
       if (event.eventType === 'suspicious_object' && event.metadata?.object) {
         suspiciousObjects.push(event.metadata.object);
       }
+    });
+
+    // Count objects
+    suspiciousObjects.forEach(obj => {
+      objectCounts[obj] = (objectCounts[obj] || 0) + 1;
     });
 
     // Focus lost count
@@ -70,10 +88,6 @@ router.get('/:id/pdf', async (req, res) => {
       doc.moveDown();
       doc.fontSize(14).text('Detected Objects:', { underline: true });
       doc.fontSize(12);
-      const objectCounts = {};
-      suspiciousObjects.forEach(obj => {
-        objectCounts[obj] = (objectCounts[obj] || 0) + 1;
-      });
       Object.entries(objectCounts).forEach(([obj, count]) => {
         doc.text(`• ${obj.replace('_', ' ').toUpperCase()}: ${count} detections`);
       });
@@ -125,7 +139,14 @@ router.get('/:id/pdf', async (req, res) => {
     doc.end();
   } catch (error) {
     console.error('Error generating PDF report:', error);
-    res.status(500).json({ error: 'Failed to generate PDF report' });
+    
+    // If response headers haven't been sent yet, send error response
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate PDF report' });
+    } else {
+      // If headers already sent, just log the error
+      console.error('PDF generation failed after headers sent');
+    }
   }
 });
 

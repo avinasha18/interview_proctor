@@ -28,6 +28,7 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
   // Stop streaming when not active
   useEffect(() => {
     if (!isActive && stream) {
+      console.log('🛑 Interview ended, stopping video stream and releasing media devices');
       stopStreaming();
     }
   }, [isActive]);
@@ -228,20 +229,32 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
   };
 
   const stopStreaming = () => {
+    console.log('🛑 Stopping video streaming and releasing media devices...');
+    
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+      console.log('✅ Cleared streaming interval');
     }
 
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      console.log('🛑 Stopping media tracks...');
+      stream.getTracks().forEach(track => {
+        console.log(`🛑 Stopping track: ${track.kind} (${track.label})`);
+        track.stop();
+      });
       setStream(null);
+      console.log('✅ Media tracks stopped and stream cleared');
     }
 
     if (wsRef.current) {
+      console.log('🛑 Closing WebSocket connection...');
       wsRef.current.close();
       wsRef.current = null;
+      console.log('✅ WebSocket connection closed');
     }
+    
+    console.log('✅ Video streaming stopped and media devices released');
   };
 
   const toggleStreaming = () => {

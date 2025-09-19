@@ -18,16 +18,13 @@ class ProctoringService:
         self.focus_timeout = 5  # seconds
         self.face_timeout = 10  # seconds
         self.drowsiness_threshold = 0.25
-        self.focus_threshold = 0.15  # 15% deviation from center
+        self.focus_threshold = 0.25  # 15% deviation from center
         self.ear_frames = 0  # Counter for consecutive low EAR frames
-        self.ear_threshold_frames = 5  # Number of frames to confirm drowsiness
+        self.ear_threshold_frames = 3  # Number of frames to confirm drowsiness
         
         # YOLOv8 classes that are actually detected - using COCO dataset classes
         self.target_objects = [
-            "cell phone", "book", "laptop", "mouse", "keyboard", "remote", 
-            "scissors", "cup", "bottle", "wine glass", "tv",
-            "microwave", "oven", "toaster", "sink", "refrigerator",
-            "clock", "vase", "teddy bear", "hair drier", "toothbrush"
+            "cell phone", "book", "laptop", "mouse", "keyboard", "remote"
         ]
         
         # Event deduplication

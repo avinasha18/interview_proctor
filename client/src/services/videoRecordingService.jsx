@@ -56,7 +56,14 @@ class VideoRecordingService {
 
       // Send chunks to backend every 2 seconds
       this.recordingInterval = setInterval(() => {
-        this.sendChunksToBackend(interviewId);
+        // Only send chunks if recording is still active
+        if (this.isRecording) {
+          this.sendChunksToBackend(interviewId);
+        } else {
+          console.log('⚠️ Recording interval still running but recording stopped, clearing interval');
+          clearInterval(this.recordingInterval);
+          this.recordingInterval = null;
+        }
       }, 2000);
 
       // Notify backend that recording started
@@ -74,8 +81,13 @@ class VideoRecordingService {
           this.recordingInterval = null;
         }
         if (this.mediaStream) {
-          this.mediaStream.getTracks().forEach(track => track.stop());
+          console.log('🛑 Stopping media tracks due to error...');
+          this.mediaStream.getTracks().forEach(track => {
+            console.log(`🛑 Stopping track: ${track.kind} (${track.label})`);
+            track.stop();
+          });
           this.mediaStream = null;
+          console.log('✅ Media tracks stopped due to error');
         }
         return { success: false, error: `Failed to start recording: ${error.message}` };
       }
@@ -110,8 +122,13 @@ class VideoRecordingService {
 
       // Stop all tracks
       if (this.mediaStream) {
-        this.mediaStream.getTracks().forEach(track => track.stop());
+        console.log('🛑 Stopping video recording media tracks...');
+        this.mediaStream.getTracks().forEach(track => {
+          console.log(`🛑 Stopping recording track: ${track.kind} (${track.label})`);
+          track.stop();
+        });
         this.mediaStream = null;
+        console.log('✅ Video recording media tracks stopped');
       }
 
       // Wait a moment for chunks to be processed
@@ -135,7 +152,11 @@ class VideoRecordingService {
   }
 
   async sendChunksToBackend(interviewId) {
-    if (this.recordingChunks.length === 0) return;
+    // Check if recording is still active before sending chunks
+    if (!this.isRecording || this.recordingChunks.length === 0) {
+      console.log('⚠️ Skipping chunk send - recording not active or no chunks');
+      return;
+    }
 
     try {
       // Combine chunks into a single blob
@@ -145,6 +166,12 @@ class VideoRecordingService {
       const reader = new FileReader();
       reader.onload = async () => {
         const base64Data = reader.result;
+        
+        // Double-check if recording is still active before sending
+        if (!this.isRecording) {
+          console.log('⚠️ Recording stopped while processing chunks, skipping send');
+          return;
+        }
         
         try {
           const response = await fetch(`${this.BACKEND_URL}/api/recording/${interviewId}/chunk`, {
@@ -161,7 +188,7 @@ class VideoRecordingService {
             console.log(`📤 Sent ${this.recordingChunks.length} chunks to backend`);
             this.recordingChunks = []; // Clear sent chunks
           } else {
-            console.error('❌ Failed to send chunks to backend');
+            console.error('❌ Failed to send chunks to backend:', response.status, response.statusText);
           }
         } catch (error) {
           console.error('❌ Error sending chunks to backend:', error);
@@ -243,6 +270,36 @@ class VideoRecordingService {
       isRecording: this.isRecording,
       chunksCount: this.recordingChunks.length
     };
+  }
+
+  // Emergency cleanup method to stop all recording activities
+  forceStopRecording() {
+    console.log('🛑 Force stopping all recording activities...');
+    
+    this.isRecording = false;
+    
+    if (this.recordingInterval) {
+      clearInterval(this.recordingInterval);
+      this.recordingInterval = null;
+      console.log('✅ Recording interval cleared');
+    }
+    
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+      console.log('✅ MediaRecorder stopped');
+    }
+    
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => {
+        console.log(`🛑 Force stopping track: ${track.kind} (${track.label})`);
+        track.stop();
+      });
+      this.mediaStream = null;
+      console.log('✅ Media stream cleared');
+    }
+    
+    this.recordingChunks = [];
+    console.log('✅ All recording activities force stopped');
   }
 }
 

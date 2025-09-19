@@ -391,4 +391,97 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Delete a single interview
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('🗑️ Deleting interview with ID:', id);
+
+    const interview = await Interview.findById(id);
+    if (!interview) {
+      return res.status(404).json({ error: 'Interview not found' });
+    }
+
+    // Delete associated events
+    await Event.deleteMany({ interviewId: id });
+    console.log('✅ Deleted associated events');
+
+    // Delete video from Cloudinary if exists
+    if (interview.videoUrl) {
+      try {
+        const cloudinary = (await import('cloudinary')).v2;
+        const publicId = interview.videoUrl.split('/').slice(-2).join('/').replace(/\.[^/.]+$/, '');
+        await cloudinary.uploader.destroy(publicId);
+        console.log('✅ Deleted video from Cloudinary:', publicId);
+      } catch (cloudinaryError) {
+        console.error('❌ Error deleting video from Cloudinary:', cloudinaryError);
+        // Continue with interview deletion even if Cloudinary deletion fails
+      }
+    }
+
+    // Delete the interview
+    await Interview.findByIdAndDelete(id);
+    console.log('✅ Interview deleted successfully');
+
+    res.json({ 
+      success: true, 
+      message: 'Interview deleted successfully' 
+    });
+  } catch (error) {
+    console.error('❌ Error deleting interview:', error);
+    res.status(500).json({ error: 'Failed to delete interview' });
+  }
+});
+
+// Delete all interviews for a specific interviewer
+router.delete('/interviewer/:email/all', async (req, res) => {
+  try {
+    const { email } = req.params;
+    console.log('🗑️ Deleting all interviews for interviewer:', email);
+
+    // Find all interviews for this interviewer
+    const interviews = await Interview.find({ interviewerEmail: email });
+    console.log(`Found ${interviews.length} interviews to delete`);
+
+    if (interviews.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: 'No interviews found to delete' 
+      });
+    }
+
+    // Delete associated events for all interviews
+    const interviewIds = interviews.map(interview => interview._id);
+    await Event.deleteMany({ interviewId: { $in: interviewIds } });
+    console.log('✅ Deleted all associated events');
+
+    // Delete videos from Cloudinary
+    const cloudinary = (await import('cloudinary')).v2;
+    for (const interview of interviews) {
+      if (interview.videoUrl) {
+        try {
+          const publicId = interview.videoUrl.split('/').slice(-2).join('/').replace(/\.[^/.]+$/, '');
+          await cloudinary.uploader.destroy(publicId);
+          console.log('✅ Deleted video from Cloudinary:', publicId);
+        } catch (cloudinaryError) {
+          console.error('❌ Error deleting video from Cloudinary:', cloudinaryError);
+          // Continue with other deletions even if one fails
+        }
+      }
+    }
+
+    // Delete all interviews
+    await Interview.deleteMany({ interviewerEmail: email });
+    console.log('✅ All interviews deleted successfully');
+
+    res.json({ 
+      success: true, 
+      message: `Successfully deleted ${interviews.length} interviews` 
+    });
+  } catch (error) {
+    console.error('❌ Error deleting all interviews:', error);
+    res.status(500).json({ error: 'Failed to delete all interviews' });
+  }
+});
+
 export default router;

@@ -88,18 +88,63 @@ const CandidatePortal = ({ initialCode = '' }) => {
             setRecordingStatus('completed');
           } else {
             console.error('❌ Failed to stop video recording:', result.error);
+            // Force stop if normal stop failed
+            videoRecordingService.forceStopRecording();
           }
         } catch (error) {
           console.error('❌ Error stopping video recording:', error);
+          // Force stop on error
+          videoRecordingService.forceStopRecording();
         }
       } else {
         console.log('ℹ️ No active recording to stop (may have been processed already)');
+        // Force stop anyway to ensure cleanup
+        videoRecordingService.forceStopRecording();
       }
       
+      // Stop interview session and release media devices
+      setIsInterviewStarted(false);
       setShowReport(true);
       setIsRecording(false);
       setRecordingStatus('completed');
       // Clear any existing errors
+      setError(null);
+    });
+
+    // Listen for end-interview event from interviewer
+    newSocket.on('end-interview', async (data) => {
+      console.log('Received end-interview event from interviewer:', data);
+      
+      // Stop video recording if active
+      if (isRecording && interview) {
+        try {
+          console.log('🛑 Stopping video recording due to interviewer ending interview...');
+          const result = await videoRecordingService.stopRecording(interview.id);
+          
+          if (result.success) {
+            console.log('✅ Video recording stopped successfully');
+            setRecordingStatus('completed');
+          } else {
+            console.error('❌ Failed to stop video recording:', result.error);
+            // Force stop if normal stop failed
+            videoRecordingService.forceStopRecording();
+          }
+        } catch (error) {
+          console.error('❌ Error stopping video recording:', error);
+          // Force stop on error
+          videoRecordingService.forceStopRecording();
+        }
+      } else {
+        console.log('ℹ️ No active recording to stop (may have been processed already)');
+        // Force stop anyway to ensure cleanup
+        videoRecordingService.forceStopRecording();
+      }
+      
+      // Stop interview session and release media devices
+      setIsInterviewStarted(false);
+      setShowReport(true);
+      setIsRecording(false);
+      setRecordingStatus('completed');
       setError(null);
     });
 
@@ -117,12 +162,18 @@ const CandidatePortal = ({ initialCode = '' }) => {
             setRecordingStatus('completed');
           } else {
             console.error('❌ Failed to stop video recording:', result.error);
+            // Force stop if normal stop failed
+            videoRecordingService.forceStopRecording();
           }
         } catch (error) {
           console.error('❌ Error stopping video recording:', error);
+          // Force stop on error
+          videoRecordingService.forceStopRecording();
         }
       } else {
         console.log('ℹ️ No active recording to stop (may have been processed already)');
+        // Force stop anyway to ensure cleanup
+        videoRecordingService.forceStopRecording();
       }
       
       setError('You have been disconnected from the interview');
@@ -224,10 +275,17 @@ const CandidatePortal = ({ initialCode = '' }) => {
           setRecordingStatus('completed');
         } else {
           console.error('❌ Failed to stop video recording:', result.error);
+          // Force stop if normal stop failed
+          videoRecordingService.forceStopRecording();
         }
       } catch (error) {
         console.error('❌ Error stopping video recording:', error);
+        // Force stop on error
+        videoRecordingService.forceStopRecording();
       }
+    } else {
+      // Force stop anyway to ensure cleanup
+      videoRecordingService.forceStopRecording();
     }
 
     setInterview(null);

@@ -14,6 +14,9 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
   const [interviewStatus, setInterviewStatus] = useState(interview.status);
   const [candidateVideoUrl, setCandidateVideoUrl] = useState(null);
   const [candidateVideoFrame, setCandidateVideoFrame] = useState(null);
+  const [isEndingInterview, setIsEndingInterview] = useState(false);
+  const [freshInterviewData, setFreshInterviewData] = useState(interview);
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
 
   useEffect(() => {
     // Initialize socket connection
@@ -62,16 +65,105 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
     };
   }, [interview._id]);
 
+  // Fetch fresh data when interview status changes to completed
+  useEffect(() => {
+    if (interviewStatus === 'completed') {
+      console.log('🔄 Interview completed, fetching fresh data...');
+      fetchFreshInterviewData();
+    }
+  }, [interviewStatus]);
+
   const endInterview = async () => {
+    if (isEndingInterview) {
+      console.log('Interview end already in progress, ignoring duplicate click');
+      return;
+    }
+
     try {
+      setIsEndingInterview(true);
       const interviewId = interview._id || interview.id;
       console.log('Ending interview with ID:', interviewId);
-      await axios.post(`${BACKEND_URL}/api/interviews/${interviewId}/end`);
+      
+      // Immediately update UI state
       setInterviewStatus('completed');
-      onRefresh();
+      
+      // Emit socket event to notify candidate that interview is ending
+      if (socket) {
+        socket.emit('end-interview', { interviewId });
+      }
+      
+      // Process server request in background without blocking UI
+      axios.post(`${BACKEND_URL}/api/interviews/${interviewId}/end`)
+        .then(() => {
+          console.log('✅ Interview ended successfully on server');
+          // Fetch fresh data after server processing
+          setTimeout(() => {
+            fetchFreshInterviewData();
+            onRefresh(); // Refresh parent data
+          }, 1000); // Wait 1 second for server to process
+        })
+        .catch((err) => {
+          console.error('❌ Error ending interview on server:', err);
+          setError('Failed to end interview: ' + err.message);
+        })
+        .finally(() => {
+          setIsEndingInterview(false);
+        });
+        
     } catch (err) {
       console.error('Error ending interview:', err);
       setError('Failed to end interview: ' + err.message);
+      setIsEndingInterview(false); // Reset on error
+    }
+  };
+
+  const fetchFreshInterviewData = async () => {
+    try {
+      setIsRefreshingData(true);
+      const interviewId = interview._id || interview.id;
+      console.log('🔄 Fetching fresh interview data for ID:', interviewId);
+      const response = await axios.get(`${BACKEND_URL}/api/reports/${interviewId}/summary`);
+      if (response.data.success) {
+        const freshData = response.data.summary.interview;
+        const freshStats = response.data.summary.statistics;
+        console.log('✅ Fresh interview data fetched:', freshData);
+        console.log('✅ Fresh statistics fetched:', freshStats);
+        
+        // Update both interview data and statistics
+        setFreshInterviewData({
+          ...freshData,
+          focusLostCount: freshStats.focusLostCount,
+          suspiciousEventsCount: freshStats.suspiciousEventsCount,
+          integrityScore: freshStats.integrityScore,
+          totalEvents: freshStats.totalEvents
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error fetching fresh interview data:', error);
+    } finally {
+      setIsRefreshingData(false);
+    }
+  };
+
+  const deleteInterview = async (interviewId) => {
+    if (!confirm('Are you sure you want to delete this interview? This action cannot be undone and will also delete the video from Cloudinary.')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting interview:', interviewId);
+      const response = await axios.delete(`${BACKEND_URL}/api/interviews/${interviewId}`);
+      
+      if (response.data.success) {
+        console.log('✅ Interview deleted successfully');
+        alert('Interview deleted successfully!');
+        onBack(); // Go back to dashboard
+      } else {
+        throw new Error(response.data.error || 'Failed to delete interview');
+      }
+    } catch (error) {
+      console.error('❌ Error deleting interview:', error);
+      alert('Failed to delete interview: ' + error.message);
     }
   };
 
@@ -119,9 +211,14 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
               {interviewStatus === 'active' && (
                 <button
                   onClick={endInterview}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  disabled={isEndingInterview}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    isEndingInterview
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-red-600 text-white hover:bg-red-700'
+                  }`}
                 >
-                  End Interview
+                  {isEndingInterview ? 'Ending...' : 'End Interview'}
                 </button>
               )}
               <button
@@ -262,23 +359,41 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                 </div>
               ) : interviewStatus === 'completed' ? (
                 <div className="space-y-4">
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">Interview Statistics</h3>
+                      <div className="flex items-center space-x-2">
+                        {isRefreshingData && (
+                          <div className="flex items-center space-x-1 text-blue-600">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                            <span className="text-sm">Refreshing...</span>
+                          </div>
+                        )}
+                        {freshInterviewData.duration !== undefined && !isRefreshingData && (
+                          <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                            ✅ Live Data
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="bg-blue-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-blue-800">Duration</h3>
                       <p className="text-2xl font-bold text-blue-600">
-                        {interview.duration || 0} min
+                        {freshInterviewData.duration !== undefined ? freshInterviewData.duration : (interview.duration || 0)} min
                       </p>
                     </div>
                     <div className="bg-yellow-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-yellow-800">Focus Lost</h3>
                       <p className="text-2xl font-bold text-yellow-600">
-                        {interview.focusLostCount || 0}
+                        {freshInterviewData.focusLostCount !== undefined ? freshInterviewData.focusLostCount : (interview.focusLostCount || 0)}
                       </p>
                     </div>
                     <div className="bg-red-50 p-4 rounded-lg">
                       <h3 className="font-semibold text-red-800">Suspicious Events</h3>
                       <p className="text-2xl font-bold text-red-600">
-                        {interview.suspiciousEventsCount || 0}
+                        {freshInterviewData.suspiciousEventsCount !== undefined ? freshInterviewData.suspiciousEventsCount : (interview.suspiciousEventsCount || 0)}
                       </p>
                     </div>
                   </div>
@@ -287,10 +402,10 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Integrity Score</h3>
                     <div className="flex items-center justify-center">
                       <div className={`text-4xl font-bold ${
-                        (interview.integrityScore || 0) >= 80 ? 'text-green-600' :
-                        (interview.integrityScore || 0) >= 60 ? 'text-yellow-600' : 'text-red-600'
+                        (freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 80 ? 'text-green-600' :
+                        (freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 60 ? 'text-yellow-600' : 'text-red-600'
                       }`}>
-                        {interview.integrityScore || 0}/100
+                        {freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)}/100
                       </div>
                     </div>
                   </div>
@@ -333,11 +448,35 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
               </div>
               <div className="flex space-x-4">
                 <ReportDownload interviewId={interview._id} />
+                {interviewStatus === 'completed' && (
+                  <button
+                    onClick={fetchFreshInterviewData}
+                    disabled={isRefreshingData}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      isRefreshingData
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {isRefreshingData ? '🔄 Refreshing...' : '🔄 Refresh Data'}
+                  </button>
+                )}
                 <button
                   onClick={endInterview}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  disabled={isEndingInterview}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    isEndingInterview
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-red-600 text-white hover:bg-red-700'
+                  }`}
                 >
-                  End Interview
+                  {isEndingInterview ? 'Ending...' : 'End Interview'}
+                </button>
+                <button
+                  onClick={() => deleteInterview(interview._id)}
+                  className="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors"
+                >
+                  Delete Interview
                 </button>
               </div>
             </div>

@@ -73,6 +73,50 @@ const InterviewerDashboard = () => {
     }
   };
 
+  const deleteInterview = async (interviewId) => {
+    if (!confirm('Are you sure you want to delete this interview? This action cannot be undone and will also delete the video from Cloudinary.')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting interview:', interviewId);
+      const response = await axios.delete(`${BACKEND_URL}/api/interviews/${interviewId}`);
+      
+      if (response.data.success) {
+        console.log('✅ Interview deleted successfully');
+        alert('Interview deleted successfully!');
+        refreshInterviews(); // Refresh the list
+      } else {
+        throw new Error(response.data.error || 'Failed to delete interview');
+      }
+    } catch (error) {
+      console.error('❌ Error deleting interview:', error);
+      alert('Failed to delete interview: ' + error.message);
+    }
+  };
+
+  const deleteAllInterviews = async () => {
+    if (!confirm('Are you sure you want to delete ALL interviews? This action cannot be undone and will also delete all videos from Cloudinary.')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting all interviews');
+      const response = await axios.delete(`${BACKEND_URL}/api/interviews/interviewer/${interviewerEmail}/all`);
+      
+      if (response.data.success) {
+        console.log('✅ All interviews deleted successfully');
+        alert('All interviews deleted successfully!');
+        setInterviews([]); // Clear the list
+      } else {
+        throw new Error(response.data.error || 'Failed to delete all interviews');
+      }
+    } catch (error) {
+      console.error('❌ Error deleting all interviews:', error);
+      alert('Failed to delete all interviews: ' + error.message);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('interviewerEmail');
     localStorage.removeItem('isAuthenticated');
@@ -160,6 +204,14 @@ const InterviewerDashboard = () => {
               >
                 Refresh
               </button>
+              {interviews.length > 0 && (
+                <button
+                  onClick={deleteAllInterviews}
+                  className="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors"
+                >
+                  🗑️ Delete All
+                </button>
+              )}
               <button
                 onClick={logout}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -313,6 +365,12 @@ const InterviewerDashboard = () => {
                             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
                           >
                             Download PDF
+                          </button>
+                          <button
+                            onClick={() => deleteInterview(interview._id)}
+                            className="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors text-sm"
+                          >
+                            🗑️ Delete
                           </button>
                         </>
                       )}
