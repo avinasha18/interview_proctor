@@ -14,8 +14,8 @@ export const getBackendUrl = () => {
   
   // Fallback based on hostname
   if (window.location.hostname === 'interview-proctor-system.vercel.app') {
-    const fallbackUrl = 'https://interview-proctor-server.vercel.app';
-    console.log('Using Vercel fallback URL:', fallbackUrl);
+    const fallbackUrl = 'https://interview-proctor-1.onrender.com';
+    console.log('Using Render fallback URL:', fallbackUrl);
     return fallbackUrl;
   }
   

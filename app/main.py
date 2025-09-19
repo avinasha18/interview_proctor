@@ -27,6 +27,7 @@ app.add_middleware(
     allow_origins=[
         "https://interview-proctor-system.vercel.app",
         "https://interview-proctor-server.vercel.app",
+        "https://interview-proctor-1.onrender.com",
         "http://localhost:3001",
         "http://localhost:5173",
         "*"  # Allow all origins for development

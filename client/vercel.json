@@ -35,7 +35,7 @@
     }
   ],
   "env": {
-    "VITE_BACKEND_URL": "https://interview-proctor-server.vercel.app",
+    "VITE_BACKEND_URL": "https://interview-proctor-1.onrender.com",
     "VITE_PYTHON_SERVICE_URL": "https://interview-proctor-f97c.onrender.com"
   }
 }

@@ -26,6 +26,7 @@ const io = new Server(server, {
     origin: [
       "https://interview-proctor-system.vercel.app",
       "https://interview-proctor-server.vercel.app",
+      "https://interview-proctor-1.onrender.com",
       "https://interview-proctor-f97c.onrender.com",
       "http://localhost:3001",
       "http://localhost:5173"
@@ -43,6 +44,7 @@ app.use(cors({
   origin: [
     "https://interview-proctor-system.vercel.app",
     "https://interview-proctor-server.vercel.app",
+    "https://interview-proctor-1.onrender.com",
     "https://interview-proctor-f97c.onrender.com",
     "http://localhost:3001",
     "http://localhost:5173"
