@@ -24,9 +24,15 @@ app = FastAPI(title="Proctoring ML Service", version="1.0.0")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://interview-proctor-system.vercel.app",
+        "https://interview-proctor-server.vercel.app",
+        "http://localhost:3001",
+        "http://localhost:5173",
+        "*"  # Allow all origins for development
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

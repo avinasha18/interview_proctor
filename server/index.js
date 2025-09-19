@@ -23,8 +23,15 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
-    methods: ["GET", "POST"]
+    origin: [
+      "https://interview-proctor-system.vercel.app",
+      "https://interview-proctor-server.vercel.app",
+      "https://interview-proctor-f97c.onrender.com",
+      "http://localhost:3001",
+      "http://localhost:5173"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   },
   maxHttpBufferSize: 50 * 1024 * 1024, // 50MB limit for Socket.IO messages
   pingTimeout: 60000,
@@ -32,7 +39,18 @@ const io = new Server(server, {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://interview-proctor-system.vercel.app",
+    "https://interview-proctor-server.vercel.app",
+    "https://interview-proctor-f97c.onrender.com",
+    "http://localhost:3001",
+    "http://localhost:5173"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json({ limit: '50mb' })); // Increase payload limit for video chunks
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 

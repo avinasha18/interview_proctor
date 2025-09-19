@@ -30,9 +30,17 @@ export const BACKEND_URL = getBackendUrl();
 
 // Python ML service URL configuration
 export const getPythonServiceUrl = () => {
+  const envUrl = import.meta.env.VITE_PYTHON_SERVICE_URL;
+  
+  // Check if environment variable is valid
+  if (envUrl && envUrl !== 'undefined' && envUrl !== '' && envUrl !== 'null') {
+    console.log('Using environment Python service URL:', envUrl);
+    return envUrl;
+  }
+  
   // Check if we're in production (Vercel)
   if (window.location.hostname === 'interview-proctor-system.vercel.app') {
-    return 'https://exam-proctor-ml.onrender.com'; // Update this to your actual ML service URL
+    return 'https://interview-proctor-f97c.onrender.com'; // Updated to correct ML service URL
   }
   // Local development
   return 'http://localhost:8000';
