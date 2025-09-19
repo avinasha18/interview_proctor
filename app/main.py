@@ -122,15 +122,21 @@ async def send_events_to_backend(interview_id: str, events: List[dict]):
     Send events to Node.js backend
     """
     try:
+        print(f"📤 Sending {len(events)} events to backend for interview {interview_id}")
         async with httpx.AsyncClient() as client:
             for event in events:
-                await client.post(
+                print(f"📤 Sending event: {event['eventType']} - {event['message']}")
+                response = await client.post(
                     f"{BACKEND_URL}/api/events/{interview_id}",
                     json=event,
                     timeout=5.0
                 )
+                if response.status_code == 200:
+                    print(f"✅ Event sent successfully: {event['eventType']}")
+                else:
+                    print(f"❌ Failed to send event: {response.status_code} - {response.text}")
     except Exception as e:
-        print(f"Error sending events to backend: {e}")
+        print(f"❌ Error sending events to backend: {e}")
 
 @app.on_event("startup")
 async def startup_event():

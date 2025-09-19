@@ -26,11 +26,8 @@ import Input from './ui/Input';
 import { Card, CardContent, CardHeader } from './ui/Card';
 import Badge from './ui/Badge';
 import ThemeToggle from './ui/ThemeToggle';
-
+import { BACKEND_URL, PYTHON_SERVICE_URL } from '../utils/config';
 console.log('🔍 Video recording service imported:', videoRecordingService);
-
-const BACKEND_URL = 'http://localhost:3001';
-const PYTHON_SERVICE_URL = 'http://localhost:8000';
 
 const CandidatePortal = ({ initialCode = '' }) => {
   const [interviewCode, setInterviewCode] = useState(initialCode);
@@ -172,7 +169,8 @@ const CandidatePortal = ({ initialCode = '' }) => {
       });
 
       // Join the interview room
-      newSocket.emit('join-interview', interview.id);
+      const interviewId = interview.id; // Use the MongoDB _id from join response
+      newSocket.emit('join-interview', interviewId);
 
       return () => {
         newSocket.close();
@@ -193,6 +191,9 @@ const CandidatePortal = ({ initialCode = '' }) => {
       const response = await axios.post(`${BACKEND_URL}/api/interviews/join/${interviewCode}`);
       
       if (response.data.success) {
+        console.log('📋 Interview object received from server:', response.data.interview);
+        console.log('📋 Interview ID property:', response.data.interview.id);
+        console.log('📋 Interview _ID property:', response.data.interview._id);
         setInterview(response.data.interview);
         localStorage.setItem('interviewCode', interviewCode);
         localStorage.setItem('currentInterview', JSON.stringify(response.data.interview));
@@ -213,10 +214,32 @@ const CandidatePortal = ({ initialCode = '' }) => {
     setIsInterviewStarted(true);
     localStorage.setItem('isInterviewStarted', 'true');
     
+    // Verify interview exists on server before starting recording
+    try {
+      // The join endpoint returns id: interview._id, so we should use interview.id for verification
+      const interviewId = interview.id; // This is the MongoDB _id from the join response
+      console.log('🔍 Verifying interview exists on server...');
+      console.log('🔍 Using interview ID:', interviewId);
+      console.log('🔍 Interview object:', interview);
+      console.log('🔍 Verification URL:', `${BACKEND_URL}/api/interviews/${interviewId}`);
+      
+      const verifyResponse = await axios.get(`${BACKEND_URL}/api/interviews/${interviewId}`);
+      if (!verifyResponse.data.success) {
+        throw new Error('Interview not found on server');
+      }
+      console.log('✅ Interview verified on server');
+    } catch (verifyError) {
+      console.error('❌ Interview verification failed:', verifyError);
+      setError('Interview not found. Please try joining again.');
+      return;
+    }
+
     // Start video recording
     try {
+      // Use the same ID that was verified - interview.id (which is the MongoDB _id)
+      const interviewId = interview.id;
       console.log('🎥 Starting video recording for interview...', {
-        interviewId: interview.id,
+        interviewId: interviewId,
         candidateName: interview.candidateName,
         interview: interview
       });
@@ -228,7 +251,7 @@ const CandidatePortal = ({ initialCode = '' }) => {
       }
       
       const recordingResult = await videoRecordingService.startRecording(
-        interview.id, 
+        interviewId, 
         interview.candidateName
       );
       
@@ -247,7 +270,8 @@ const CandidatePortal = ({ initialCode = '' }) => {
     
     // Notify interviewer that candidate has started
     if (socket) {
-      socket.emit('candidate-started-interview', interview.id);
+      const interviewId = interview.id; // Use the MongoDB _id from join response
+      socket.emit('candidate-started-interview', interviewId);
     }
   };
 
@@ -256,7 +280,7 @@ const CandidatePortal = ({ initialCode = '' }) => {
     if (socket && interview) {
       console.log('📤 Notifying server that candidate is leaving interview');
       socket.emit('candidate-leaving', {
-        interviewId: interview.id || interview._id,
+        interviewId: interview.id,
         candidateName: interview.candidateName,
         timestamp: new Date().toISOString()
       });
@@ -585,16 +609,24 @@ const CandidatePortal = ({ initialCode = '' }) => {
               transition={{ delay: 0.1 }}
             >
               {interview && interview.id ? (
-                <VideoStream 
-                  interviewId={interview.id}
-                  pythonServiceUrl={PYTHON_SERVICE_URL}
-                  onError={setError}
-                  onEvent={(event) => {
-                    console.log('Received proctoring event:', event);
-                    setEvents(prev => [...prev, event]);
-                  }}
-                  isActive={isInterviewStarted && !showReport}
-                />
+                <>
+                  {console.log('🎥 VideoStream conditions:', { 
+                    isInterviewStarted, 
+                    showReport, 
+                    isActive: isInterviewStarted && !showReport,
+                    interviewId: interview.id 
+                  })}
+                  <VideoStream 
+                    interviewId={interview.id}
+                    pythonServiceUrl={PYTHON_SERVICE_URL}
+                    onError={setError}
+                    onEvent={(event) => {
+                      console.log('Received proctoring event:', event);
+                      setEvents(prev => [...prev, event]);
+                    }}
+                    isActive={isInterviewStarted && !showReport}
+                  />
+                </>
               ) : (
                 <Card className="h-96">
                   <CardContent className="flex items-center justify-center h-full">

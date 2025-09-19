@@ -25,7 +25,10 @@ const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL || "http://localhost:5173",
     methods: ["GET", "POST"]
-  }
+  },
+  maxHttpBufferSize: 50 * 1024 * 1024, // 50MB limit for Socket.IO messages
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Middleware
@@ -72,7 +75,14 @@ io.on('connection', (socket) => {
   socket.on('join-interview', async (interviewId) => {
     socket.join(interviewId);
     socket.interviewId = interviewId;
-    console.log(`Client ${socket.id} joined interview ${interviewId}`);
+    const roomSize = io.sockets.adapter.rooms.get(interviewId)?.size || 0;
+    console.log(`🔌 Client ${socket.id} joined interview ${interviewId} (room size: ${roomSize})`);
+    
+    // Log all sockets in this room
+    const room = io.sockets.adapter.rooms.get(interviewId);
+    if (room) {
+      console.log(`🔌 All socket IDs in room ${interviewId}:`, Array.from(room));
+    }
   });
 
   socket.on('candidate-started-interview', async (interviewId) => {

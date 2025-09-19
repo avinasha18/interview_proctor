@@ -5,8 +5,7 @@ import VideoCapture from './VideoCapture';
 import EventLog from './EventLog';
 import ReportDownload from './ReportDownload';
 
-import { BACKEND_URL } from '../utils/config';
-const PYTHON_SERVICE_URL = 'http://localhost:8000';
+import { BACKEND_URL, PYTHON_SERVICE_URL } from '../utils/config';
 
 const LiveInterviewView = ({ interview, onBack, onRefresh }) => {
   const [socket, setSocket] = useState(null);

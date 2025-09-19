@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import { User, Mail, Calendar, Copy, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Mail, Calendar, Copy, CheckCircle, AlertCircle, Plus } from 'lucide-react';
 import Button from './ui/Button';
 import Input from './ui/Input';
-import { Card, CardContent } from './ui/Card';
-import Badge from './ui/Badge';
 
 import { BACKEND_URL } from '../utils/config';
 
@@ -76,71 +74,70 @@ const InterviewScheduler = ({ interviewerEmail, onInterviewScheduled }) => {
   if (success) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full"
       >
-        <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
-          <CardContent className="p-6 text-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mx-auto w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4"
-            >
-              <CheckCircle className="w-8 h-8 text-white" />
-            </motion.div>
-            <h3 className="text-xl font-bold text-green-800 dark:text-green-200 mb-2">
-              Interview Scheduled Successfully!
+        <div className="text-center space-y-4">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+            className="mx-auto w-12 h-12 bg-green-500 rounded-full flex items-center justify-center"
+          >
+            <CheckCircle className="w-6 h-6 text-white" />
+          </motion.div>
+          
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Interview Created!
             </h3>
-            <p className="text-green-700 dark:text-green-300 mb-6">
-              The interview has been created and the candidate can now join using the code below.
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Share this code with the candidate
             </p>
-            
-            <div className="space-y-4">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-green-200 dark:border-green-700">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Interview Code:</span>
-                  <Badge variant="success" className="font-mono text-lg px-3 py-1">
-                    {success.interviewCode}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Candidate:</span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">
-                    {success.candidateName}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Email:</span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">
-                    {success.candidateEmail}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex space-x-3">
-                <Button
-                  onClick={() => copyToClipboard(success.interviewCode)}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy Code
-                </Button>
-                <Button
-                  onClick={() => {
-                    setSuccess(null);
-                    setError(null);
-                  }}
-                  className="flex-1"
-                >
-                  Schedule Another
-                </Button>
+          </div>
+          
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+            <div className="text-center">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Interview Code</div>
+              <div className="font-mono text-xl font-bold text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 px-4 py-2 rounded border">
+                {success.interviewCode}
               </div>
             </div>
-          </CardContent>
-        </Card>
+            
+            <div className="text-center space-y-1">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {success.candidateName}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {success.candidateEmail}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex space-x-2">
+            <Button
+              onClick={() => copyToClipboard(success.interviewCode)}
+              variant="outline"
+              size="sm"
+              className="flex-1"
+            >
+              <Copy className="w-4 h-4 mr-1" />
+              Copy
+            </Button>
+            <Button
+              onClick={() => {
+                setSuccess(null);
+                setError(null);
+              }}
+              size="sm"
+              className="flex-1"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              New
+            </Button>
+          </div>
+        </div>
       </motion.div>
     );
   }
@@ -149,89 +146,75 @@ const InterviewScheduler = ({ interviewerEmail, onInterviewScheduled }) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="max-w-md mx-auto"
     >
+      <div className="text-center mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          Schedule Interview
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Create a new interview session
+        </p>
+      </div>
+
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+          className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3"
         >
           <div className="flex items-center space-x-2">
-            <AlertCircle className="w-5 h-5 text-red-500" />
-            <span className="text-red-700 dark:text-red-300 font-medium">{error}</span>
+            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+            <span className="text-sm text-red-700 dark:text-red-300">{error}</span>
           </div>
         </motion.div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Input
-              label="Candidate Email"
-              type="email"
-              name="candidateEmail"
-              value={formData.candidateEmail}
-              onChange={handleInputChange}
-              placeholder="candidate@email.com"
-              required
-              icon={<Mail className="w-4 h-4" />}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Input
-              label="Candidate Name"
-              type="text"
-              name="candidateName"
-              value={formData.candidateName}
-              onChange={handleInputChange}
-              placeholder="John Doe"
-              required
-              icon={<User className="w-4 h-4" />}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-3">
           <Input
-            label="Interviewer Name"
+            label="Candidate Email"
+            type="email"
+            name="candidateEmail"
+            value={formData.candidateEmail}
+            onChange={handleInputChange}
+            placeholder="candidate@email.com"
+            required
+            icon={<Mail className="w-4 h-4" />}
+          />
+
+          <Input
+            label="Candidate Name"
+            type="text"
+            name="candidateName"
+            value={formData.candidateName}
+            onChange={handleInputChange}
+            placeholder="John Doe"
+            required
+            icon={<User className="w-4 h-4" />}
+          />
+
+          <Input
+            label="Your Name"
             type="text"
             name="interviewerName"
             value={formData.interviewerName}
             onChange={handleInputChange}
-            placeholder="Your Name"
+            placeholder="Interviewer Name"
             required
             icon={<User className="w-4 h-4" />}
           />
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Calendar className="w-4 h-4 text-indigo-500" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Interview Details
-            </span>
-          </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-            <p>• Interview will be scheduled immediately</p>
-            <p>• Candidate will receive a unique interview code</p>
-            <p>• Real-time monitoring will be active during the session</p>
-            <p>• Comprehensive reports will be generated after completion</p>
-          </div>
-        </div>
-
-        <div className="flex space-x-4">
-          <Button
-            type="submit"
-            loading={loading}
-            className="flex-1"
-            size="lg"
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            {loading ? 'Scheduling...' : 'Schedule Interview'}
-          </Button>
-        </div>
+        <Button
+          type="submit"
+          loading={loading}
+          className="w-full"
+          size="lg"
+        >
+          <Calendar className="w-4 h-4 mr-2" />
+          {loading ? 'Creating...' : 'Create Interview'}
+        </Button>
       </form>
     </motion.div>
   );

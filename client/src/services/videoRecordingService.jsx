@@ -1,3 +1,5 @@
+import { getBackendUrl } from '../utils/config';
+import { BACKEND_URL } from '../utils/config';
 class VideoRecordingService {
   constructor() {
     console.log('🎥 VideoRecordingService constructor called');
@@ -6,7 +8,9 @@ class VideoRecordingService {
     this.isRecording = false;
     this.recordingChunks = [];
     this.recordingInterval = null;
-    this.BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://interview-proctor-server.vercel.app';
+    this.BACKEND_URL = BACKEND_URL;
+    console.log('🎥 BACKEND_URL:', this.BACKEND_URL);
+    console.log('🎥 BACKEND_URL:', getBackendUrl());
   }
 
   async startRecording(interviewId, candidateName) {

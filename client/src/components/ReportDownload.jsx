@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { BACKEND_URL } from '../utils/config';
 
 const ReportDownload = ({ interviewId }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +17,7 @@ const ReportDownload = ({ interviewId }) => {
 
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL || 'https://interview-proctor-server.vercel.app'}/api/reports/${interviewId}/${format}`,
+        `${BACKEND_URL || 'https://interview-proctor-server.vercel.app'}/api/reports/${interviewId}/${format}`,
         { responseType: 'blob' }
       );
 
@@ -59,7 +60,7 @@ const ReportDownload = ({ interviewId }) => {
 
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL || 'https://interview-proctor-server.vercel.app'}/api/reports/${interviewId}/summary`
+        `${BACKEND_URL || 'https://interview-proctor-server.vercel.app'}/api/reports/${interviewId}/summary`
       );
 
       if (response.data.success) {

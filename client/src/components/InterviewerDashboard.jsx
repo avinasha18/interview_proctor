@@ -17,7 +17,10 @@ import {
   AlertTriangle,
   CheckCircle,
   BarChart3,
-  Settings
+  Settings,
+  Copy,
+  Check,
+  X
 } from 'lucide-react';
 
 import InterviewScheduler from './InterviewScheduler';
@@ -37,6 +40,7 @@ const InterviewerDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showScheduler, setShowScheduler] = useState(false);
+  const [copiedCodes, setCopiedCodes] = useState(new Set());
 
   // Load saved state from localStorage on component mount
   useEffect(() => {
@@ -143,6 +147,40 @@ const InterviewerDashboard = () => {
     } catch (error) {
       console.error('❌ Error deleting all interviews:', error);
       alert('Failed to delete all interviews: ' + error.message);
+    }
+  };
+
+  const copyInterviewCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCodes(prev => new Set([...prev, code]));
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedCodes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(code);
+          return newSet;
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to copy code:', error);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = code;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      setCopiedCodes(prev => new Set([...prev, code]));
+      setTimeout(() => {
+        setCopiedCodes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(code);
+          return newSet;
+        });
+      }, 2000);
     }
   };
 
@@ -372,43 +410,66 @@ const InterviewerDashboard = () => {
                 Create a new interview session with candidate details and monitoring settings
               </p>
               <Button
-                onClick={() => setShowScheduler(!showScheduler)}
-                variant={showScheduler ? 'secondary' : 'primary'}
+                onClick={() => setShowScheduler(true)}
                 size="lg"
                 className="px-8 py-3"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                {showScheduler ? 'Cancel Scheduling' : 'Schedule Interview'}
+                Schedule Interview
               </Button>
             </CardContent>
           </Card>
           
+          {/* Side Panel for Scheduler */}
           <AnimatePresence>
             {showScheduler && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="mt-6"
-              >
-                <Card className="border-indigo-200 dark:border-indigo-800">
-                  <CardHeader>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                      Interview Details
-                    </h3>
-                  </CardHeader>
-                  <CardContent>
-                    <InterviewScheduler 
-                      interviewerEmail={interviewerEmail}
-                      onInterviewScheduled={() => {
-                        refreshInterviews();
-                        setShowScheduler(false);
-                      }}
-                    />
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/50 z-40"
+                  onClick={() => setShowScheduler(false)}
+                />
+                
+                {/* Side Panel */}
+                <motion.div
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-800 shadow-2xl z-50 border-l border-gray-200 dark:border-gray-700"
+                >
+                  <div className="flex flex-col h-full">
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        Schedule Interview
+                      </h3>
+                      <Button
+                        onClick={() => setShowScheduler(false)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      >
+                        <X className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    
+                    {/* Form Content */}
+                    <div className="flex-1 overflow-y-auto p-6">
+                      <InterviewScheduler 
+                        interviewerEmail={interviewerEmail}
+                        onInterviewScheduled={() => {
+                          refreshInterviews();
+                          setShowScheduler(false);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
         </motion.div>
@@ -495,9 +556,20 @@ const InterviewerDashboard = () => {
                                 </div>
                                 <div className="flex items-center text-sm">
                                   <span className="text-gray-600 dark:text-gray-400 mr-2">Code:</span>
-                                  <code className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded font-mono text-xs">
+                                  <code className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded font-mono text-xs mr-2">
                                     {interview.interviewCode}
                                   </code>
+                                  <button
+                                    onClick={() => copyInterviewCode(interview.interviewCode)}
+                                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors duration-200"
+                                    title={copiedCodes.has(interview.interviewCode) ? 'Copied!' : 'Copy code'}
+                                  >
+                                    {copiedCodes.has(interview.interviewCode) ? (
+                                      <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                    ) : (
+                                      <Copy className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                                    )}
+                                  </button>
                                 </div>
                               </div>
                               

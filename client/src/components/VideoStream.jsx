@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-
+import { BACKEND_URL } from '../utils/config';
 const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -8,12 +8,15 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
   const [stream, setStream] = useState(null);
   const [error, setError] = useState(null);
 
-  console.log('VideoStream props:', { interviewId, isActive });
+  console.log('🎥 VideoStream props:', { interviewId, isActive, pythonServiceUrl });
 
   useEffect(() => {
     // Auto-start streaming when component mounts and is active
     if (isActive) {
+      console.log('🎥 VideoStream isActive=true, starting camera...');
       startCamera();
+    } else {
+      console.log('🎥 VideoStream isActive=false, not starting camera');
     }
     
     return () => {
@@ -35,7 +38,7 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
 
   const startCamera = async () => {
     if (!interviewId) {
-      console.error('Cannot start camera: interviewId is missing');
+      console.error('❌ Cannot start camera: interviewId is missing');
       setError('Interview ID is missing');
       return;
     }
@@ -43,6 +46,7 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
     try {
       setError(null);
       console.log('🎥 Starting camera for interview:', interviewId);
+      console.log('🎥 Requesting camera access...');
       
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -53,14 +57,34 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
         audio: true
       });
 
+      console.log('✅ Camera access granted, media stream obtained');
+      console.log('📹 Video tracks:', mediaStream.getVideoTracks().length);
+      console.log('🎤 Audio tracks:', mediaStream.getAudioTracks().length);
+      
       setStream(mediaStream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        
+        // Wait for video to be ready before starting streaming
+        videoRef.current.onloadedmetadata = () => {
+          console.log('🎥 Video metadata loaded, starting streaming...');
+          // Start WebSocket connection to Python service
+          connectToPythonService();
+          
+          // Also start direct streaming to backend (fallback)
+          startDirectStreaming();
+        };
+        
+        // Fallback: start streaming after a delay if metadata doesn't load
+        setTimeout(() => {
+          if (!intervalRef.current) {
+            console.log('🎥 Fallback: Starting streaming after timeout...');
+            connectToPythonService();
+            startDirectStreaming();
+          }
+        }, 3000);
       }
-
-      // Start WebSocket connection to Python service
-      connectToPythonService();
       
     } catch (err) {
       const errorMessage = 'Failed to access camera: ' + err.message;
@@ -75,9 +99,17 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
       return;
     }
 
+    if (!pythonServiceUrl) {
+      console.error('Cannot connect to Python service: pythonServiceUrl is missing');
+      console.log('Current hostname:', window.location.hostname);
+      return;
+    }
+
     try {
       const wsUrl = `${pythonServiceUrl.replace('http', 'ws')}/stream/${interviewId}`;
-      console.log('Connecting to Python ML service:', wsUrl);
+      console.log('🔌 Connecting to Python ML service:', wsUrl);
+      console.log('🔍 Interview ID:', interviewId);
+      console.log('🔍 Python Service URL:', pythonServiceUrl);
       
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -107,7 +139,11 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
 
       ws.onerror = (error) => {
         console.error('❌ WebSocket error:', error);
-        setError('Connection to ML service failed');
+        console.error('❌ WebSocket URL:', wsUrl);
+        console.error('❌ Python Service URL:', pythonServiceUrl);
+        console.error('❌ Interview ID:', interviewId);
+        setError(`Connection to ML service failed: ${pythonServiceUrl}`);
+        onError && onError(`Connection to ML service failed: ${pythonServiceUrl}`);
       };
 
       ws.onclose = (event) => {
@@ -131,13 +167,22 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
 
   const sendVideoToBackend = async (imageData) => {
     if (!interviewId) {
-      console.error('Interview ID is not available');
+      console.error('❌ Interview ID is not available for sending video frame');
+      return;
+    }
+
+    // Check if frame data is too large (prevent 431 errors)
+    const maxFrameSize = 500000; // 500KB limit
+    if (imageData.length > maxFrameSize) {
+      console.warn(`⚠️ Frame data too large (${imageData.length} bytes), skipping to prevent 431 error`);
       return;
     }
 
     try {
-      console.log(`Sending video frame to backend for interview: ${interviewId}`);
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://interview-proctor-server.vercel.app'}/api/interviews/${interviewId}/video-stream`, {
+      console.log(`📤 Sending video frame to backend for interview: ${interviewId}`);
+      console.log(`📤 Frame data length: ${imageData.length} bytes`);
+      
+      const response = await fetch(`${BACKEND_URL}/api/interviews/${interviewId}/video-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,9 +194,15 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
       });
       
       if (!response.ok) {
-        console.error('Failed to send video to backend:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('❌ Failed to send video to backend:', response.status, response.statusText, errorText);
+        
+        // If we get a 431 error, reduce quality further
+        if (response.status === 431) {
+          console.warn('⚠️ Received 431 error, frame data too large. Consider reducing quality further.');
+        }
       } else {
-        console.log('Video frame sent successfully to backend');
+        console.log('✅ Video frame sent successfully to backend');
       }
     } catch (error) {
       console.error('Error sending video to backend:', error);
@@ -159,27 +210,87 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
   };
 
   const startStreaming = () => {
-    if (!videoRef.current || !wsRef.current) return;
-
-    // Send frames every 2 seconds to prevent payload errors
-    intervalRef.current = setInterval(() => {
-      captureAndSendFrame();
-    }, 2000);
-  };
-
-  const captureAndSendFrame = () => {
-    if (!videoRef.current || !canvasRef.current) {
+    if (!videoRef.current || !wsRef.current) {
+      console.log('❌ Cannot start streaming - missing video ref or WebSocket');
       return;
     }
+
+    console.log('🎥 Starting video streaming...');
+    // Simple, stable streaming - send frames every 1 second
+    intervalRef.current = setInterval(() => {
+      captureAndSendFrame();
+    }, 1000);
+  };
+
+  const startDirectStreaming = () => {
+    if (!videoRef.current) {
+      console.log('❌ Cannot start direct streaming - missing video ref');
+      return;
+    }
+
+    console.log('🎥 Starting direct video streaming to backend...');
+    // Simple, stable direct streaming - send frames every 1 second
+    intervalRef.current = setInterval(() => {
+      captureAndSendFrameDirect();
+    }, 1000);
+  };
+
+  const captureAndSendFrameDirect = () => {
+    if (!videoRef.current || !canvasRef.current) {
+      console.log('❌ Cannot capture frame - missing video or canvas ref');
+      return;
+    }
+
+    console.log('📸 Capturing video frame for direct streaming...');
 
     try {
       const canvas = canvasRef.current;
       const video = videoRef.current;
       const ctx = canvas.getContext('2d');
 
-      // Reduce frame size to prevent payload errors
-      const maxWidth = 640;
-      const maxHeight = 480;
+      if (!video.videoWidth || !video.videoHeight) {
+        console.log('Video not ready yet');
+        return;
+      }
+
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      
+      // Set canvas size to match video
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
+
+      // Draw video frame to canvas
+      ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+
+      // Convert canvas to base64 with reduced quality to prevent 431 errors
+      const imageData = canvas.toDataURL('image/jpeg', 0.3);
+      const base64Data = imageData.split(',')[1];
+
+      // Send directly to backend
+      sendVideoToBackend(base64Data);
+      
+    } catch (error) {
+      console.error('Error capturing frame for direct streaming:', error);
+    }
+  };
+
+  const captureAndSendFrame = () => {
+    if (!videoRef.current || !canvasRef.current) {
+      console.log('❌ Cannot capture frame - missing video or canvas ref');
+      return;
+    }
+
+    console.log('📸 Capturing video frame...');
+
+    try {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const ctx = canvas.getContext('2d');
+
+      // Reduce frame size to prevent payload errors (431 Request Header Fields Too Large)
+      const maxWidth = 480;
+      const maxHeight = 360;
       const videoWidth = video.videoWidth;
       const videoHeight = video.videoHeight;
       
@@ -206,7 +317,7 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
       ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
 
       // Convert canvas to base64 with higher compression
-      const imageData = canvas.toDataURL('image/jpeg', 0.5); // Reduced quality
+      const imageData = canvas.toDataURL('image/jpeg', 0.3); // Further reduced quality for smaller payload
       const base64Data = imageData.split(',')[1];
 
       // Send to Python service for ML analysis
@@ -221,8 +332,8 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
         console.log('❌ WebSocket not ready for ML service:', wsRef.current?.readyState);
       }
 
-      // Send to backend for interviewer viewing
-      sendVideoToBackend(imageData);
+      // Send to backend for interviewer viewing (send only base64 part)
+      sendVideoToBackend(base64Data);
     } catch (err) {
       console.error('Error capturing frame:', err);
     }

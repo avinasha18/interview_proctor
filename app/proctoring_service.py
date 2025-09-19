@@ -15,8 +15,8 @@ class ProctoringService:
         self.sessions = {}
         
         # Configuration
-        self.focus_timeout = 7  # seconds
-        self.face_timeout = 10  # seconds
+        self.focus_timeout = 3  # seconds (reduced from 7 to 3)
+        self.face_timeout = 5   # seconds (reduced from 10 to 5)
         self.drowsiness_threshold = 0.25
         self.focus_threshold = 0.35  # 15% deviation from center
         self.ear_frames = 0  # Counter for consecutive low EAR frames
@@ -29,7 +29,7 @@ class ProctoringService:
         
         # Event deduplication
         self.last_events = {}  # Store last event of each type per session
-        self.event_cooldown = 3  # Minimum seconds between same event type
+        self.event_cooldown = 1  # Minimum seconds between same event type (reduced from 3 to 1)
         
     async def initialize(self):
         """Initialize ML models"""
@@ -247,13 +247,23 @@ class ProctoringService:
     def should_send_event(self, interview_id: str, event_type: str, current_time: float) -> bool:
         """Check if event should be sent (deduplication logic)"""
         if interview_id not in self.sessions:
+            print(f"❌ No session found for interview {interview_id}")
             return False
             
         session = self.sessions[interview_id]
         last_event_time = session["last_event_times"].get(event_type, 0)
+        time_since_last = current_time - last_event_time
         
-        # Only send event if enough time has passed since last event of same type
-        return current_time - last_event_time >= self.event_cooldown
+        # Debug: Log deduplication check
+        should_send = time_since_last >= self.event_cooldown
+        print(f"🔄 Event deduplication check for {event_type}:")
+        print(f"  Last event time: {last_event_time}")
+        print(f"  Current time: {current_time}")
+        print(f"  Time since last: {time_since_last:.2f}s")
+        print(f"  Cooldown: {self.event_cooldown}s")
+        print(f"  Should send: {should_send}")
+        
+        return should_send
     
     def record_event_time(self, interview_id: str, event_type: str, current_time: float):
         """Record the time when an event was sent"""
@@ -393,7 +403,9 @@ class ProctoringService:
                             # Reduced confidence thresholds for better detection
                             if label == "cell phone" and confidence > 0.3:
                                 threshold_met = True
-                            elif label in ["book", "laptop"] and confidence > 0.2:
+                            elif label in ["book"] and confidence > 0.1:
+                                threshold_met = True
+                            elif label in ["laptop"] and confidence > 0.2:
                                 threshold_met = True
                             elif label in self.target_objects and confidence > 0.3:
                                 threshold_met = True
@@ -438,6 +450,14 @@ class ProctoringService:
         for event in events:
             event["timestamp"] = current_time
             event["interview_id"] = interview_id
+        
+        # Debug: Log events being returned
+        if events:
+            print(f"📊 Generated {len(events)} events for interview {interview_id}:")
+            for i, event in enumerate(events):
+                print(f"  {i+1}. {event['eventType']} - {event['message']} ({event['severity']})")
+        else:
+            print(f"📊 No events generated for interview {interview_id}")
         
         return events
     

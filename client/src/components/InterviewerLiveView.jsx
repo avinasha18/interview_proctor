@@ -14,13 +14,178 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
   const [interviewStatus, setInterviewStatus] = useState(interview.status);
   const [candidateVideoUrl, setCandidateVideoUrl] = useState(null);
   const [candidateVideoFrame, setCandidateVideoFrame] = useState(null);
+  const [lastFrameTime, setLastFrameTime] = useState(null);
+  const lastVideoFrameRef = useRef(null);
   const [isEndingInterview, setIsEndingInterview] = useState(false);
   const [freshInterviewData, setFreshInterviewData] = useState(interview);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
+  
+  // Frame buffering and stability
+  const frameBufferRef = useRef([]);
+  const frameValidationTimeoutRef = useRef(null);
+  const lastFrameUpdateRef = useRef(0);
+  const [isReceivingFrames, setIsReceivingFrames] = useState(false);
+  const [frameError, setFrameError] = useState(null);
+
+  const fetchExistingEvents = async () => {
+    try {
+      const interviewId = interview._id || interview.id;
+      console.log('📋 Fetching existing events for interview:', interviewId);
+      
+      const response = await axios.get(`${BACKEND_URL}/api/interviews/${interviewId}/events`);
+      if (response.data.success) {
+        console.log('📋 Loaded existing events:', response.data.events.length);
+        setEvents(response.data.events);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching existing events:', error);
+    }
+  };
+
+  // Frame validation and buffering functions
+  const validateFrame = (frameData) => {
+    if (!frameData || typeof frameData !== 'string') {
+      console.log('❌ Frame validation failed: not a string');
+      return false;
+    }
+    
+    // Check if it's a valid base64 image (either data URL or raw base64)
+    const isDataUrl = frameData.startsWith('data:image/');
+    const isBase64 = /^[A-Za-z0-9+/]*={0,2}$/.test(frameData);
+    
+    if (!isDataUrl && !isBase64) {
+      console.log('❌ Frame validation failed: not valid base64 or data URL');
+      return false;
+    }
+    
+    // Check minimum size (at least 50 characters for a valid image)
+    if (frameData.length < 50) {
+      console.log('❌ Frame validation failed: too small, length:', frameData.length);
+      return false;
+    }
+    
+    console.log('✅ Frame validation passed');
+    return true;
+  };
+
+  const addFrameToBuffer = (frameData) => {
+    console.log('🔄 Processing frame data:', {
+      type: typeof frameData,
+      length: frameData?.length,
+      isValid: validateFrame(frameData),
+      preview: frameData?.substring(0, 30) + '...'
+    });
+    
+    if (!validateFrame(frameData)) {
+      console.warn('⚠️ Invalid frame data received, skipping');
+      return;
+    }
+
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastFrameUpdateRef.current;
+    
+    // Throttle frame updates to prevent flickering (max 10 FPS)
+    if (timeSinceLastUpdate < 100) {
+      console.log('⏱️ Frame throttled (too fast)');
+      return;
+    }
+
+    // Clear any previous frame errors
+    setFrameError(null);
+    
+    // Add to buffer (keep last 5 frames for better stability)
+    frameBufferRef.current.push({
+      data: frameData,
+      timestamp: now
+    });
+    
+    // Keep only last 5 frames
+    if (frameBufferRef.current.length > 5) {
+      frameBufferRef.current.shift();
+    }
+    
+    // Update current frame with the latest valid frame
+    setCandidateVideoFrame(frameData);
+    lastVideoFrameRef.current = frameData;
+    setLastFrameTime(now);
+    setIsReceivingFrames(true);
+    lastFrameUpdateRef.current = now;
+    
+    console.log('✅ Frame added to buffer, buffer size:', frameBufferRef.current.length);
+    
+    // Clear any existing timeout
+    if (frameValidationTimeoutRef.current) {
+      clearTimeout(frameValidationTimeoutRef.current);
+    }
+    
+    // Set timeout to detect if frames stop coming
+    frameValidationTimeoutRef.current = setTimeout(() => {
+      setIsReceivingFrames(false);
+      console.log('⚠️ No frames received for 3 seconds');
+    }, 3000);
+  };
+
+  const getStableFrame = () => {
+    // Return the most recent valid frame from buffer
+    let frameData = null;
+    if (frameBufferRef.current.length > 0) {
+      frameData = frameBufferRef.current[frameBufferRef.current.length - 1].data;
+      console.log('📸 Getting frame from buffer, buffer size:', frameBufferRef.current.length);
+    } else {
+      frameData = candidateVideoFrame;
+      console.log('📸 Getting frame from candidateVideoFrame');
+    }
+    
+    // Convert raw base64 to data URL if needed
+    if (frameData && !frameData.startsWith('data:image/')) {
+      const dataUrl = `data:image/jpeg;base64,${frameData}`;
+      console.log('📸 Converted base64 to data URL, length:', dataUrl.length);
+      return dataUrl;
+    }
+    
+    console.log('📸 Returning frame data as-is, length:', frameData?.length);
+    return frameData;
+  };
+
+  // Enhanced frame error recovery
+  const handleFrameError = () => {
+    console.log('🔄 Frame error detected, attempting recovery...');
+    
+    // Clear the current frame to trigger a refresh
+    setCandidateVideoFrame(null);
+    
+    // Try to get a frame from the buffer
+    if (frameBufferRef.current.length > 0) {
+      const lastValidFrame = frameBufferRef.current[frameBufferRef.current.length - 1];
+      if (lastValidFrame && validateFrame(lastValidFrame.data)) {
+        console.log('✅ Recovered frame from buffer');
+        setCandidateVideoFrame(lastValidFrame.data);
+        setFrameError(null);
+        return;
+      }
+    }
+    
+    // If no valid frame in buffer, wait for next frame
+    console.log('⏳ Waiting for next valid frame...');
+  };
+
+  // Simple debug for video frame changes
+  useEffect(() => {
+    if (candidateVideoFrame) {
+      console.log('📹 New video frame received');
+    }
+  }, [candidateVideoFrame]);
 
   useEffect(() => {
-    // Initialize socket connection
-    const newSocket = io(BACKEND_URL);
+    // Fetch existing events first
+    fetchExistingEvents();
+    
+    // Initialize socket connection with larger message size limits
+    const newSocket = io(BACKEND_URL, {
+      maxHttpBufferSize: 50 * 1024 * 1024, // 50MB limit
+      timeout: 60000,
+      forceNew: true
+    });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
@@ -46,8 +211,17 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
 
     // Listen for candidate video frames
     newSocket.on('candidate-video-frame', (data) => {
-      console.log('Received candidate video frame');
-      setCandidateVideoFrame(data.image);
+      console.log('📹 Received candidate video frame');
+      console.log('📹 Frame data type:', typeof data?.image);
+      console.log('📹 Frame data length:', data?.image?.length);
+      console.log('📹 Frame data preview:', data?.image?.substring(0, 50) + '...');
+      
+      if (data && data.image) {
+        addFrameToBuffer(data.image);
+      } else {
+        console.warn('⚠️ Received invalid video frame data:', data);
+        // Don't set frame error here, just log it
+      }
     });
 
     // Listen for candidate started interview
@@ -58,10 +232,16 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
 
     // Join the interview room
     const interviewId = interview._id || interview.id;
+    console.log('🔍 Interviewer joining interview room:', interviewId);
+    console.log('🔍 Interview object:', interview);
     newSocket.emit('join-interview', interviewId);
 
     return () => {
       newSocket.close();
+      // Cleanup frame validation timeout
+      if (frameValidationTimeoutRef.current) {
+        clearTimeout(frameValidationTimeoutRef.current);
+      }
     };
   }, [interview._id]);
 
@@ -72,6 +252,14 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
       fetchFreshInterviewData();
     }
   }, [interviewStatus]);
+
+  // Also fetch fresh data when component mounts if interview is already completed
+  useEffect(() => {
+    if (interview.status === 'completed' && !freshInterviewData.duration) {
+      console.log('🔄 Interview already completed, fetching fresh data on mount...');
+      fetchFreshInterviewData();
+    }
+  }, [interview.status]);
 
   const endInterview = async () => {
     if (isEndingInterview) {
@@ -259,38 +447,77 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Candidate Video Feed</h3>
                   <div className="flex items-center space-x-4">
                     <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      candidateVideoFrame ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      isReceivingFrames ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
+                      candidateVideoFrame ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' : 
+                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                     }`}>
-                      {candidateVideoFrame ? 'Live' : 'Waiting for Candidate'}
+                      {isReceivingFrames ? 'Live Streaming' : 
+                       candidateVideoFrame ? 'Stable Feed' : 
+                       'Waiting for Candidate'}
                     </div>
                     {candidateVideoFrame && (
                       <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-sm text-green-600 dark:text-green-400">Streaming</span>
+                        <div className={`w-2 h-2 rounded-full ${isReceivingFrames ? 'bg-green-500 animate-pulse' : 'bg-blue-500'}`}></div>
+                        <span className={`text-sm ${isReceivingFrames ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                          {isReceivingFrames ? 'Active' : 'Stable'}
+                        </span>
+                        {lastFrameTime && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            ({Math.round((Date.now() - lastFrameTime) / 1000)}s ago)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {frameError && (
+                      <div className="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded text-xs">
+                        Frame Error
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div className="relative">
-                  {candidateVideoFrame ? (
-                    <img
-                      src={candidateVideoFrame}
-                      alt="Candidate Video Feed"
-                      className="w-full h-auto rounded-lg border border-gray-300"
-                      style={{ maxHeight: '400px' }}
-                    />
-                  ) : (
-                    <div className="w-full h-64 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center">
-                      <div className="text-center">
-                        <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Waiting for Candidate</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Candidate needs to click "Start Interview"</p>
+                  {/* Fixed size container to prevent flickering */}
+                  <div className="w-full h-80 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden relative">
+                    {getStableFrame() ? (
+                      <img
+                        src={getStableFrame()}
+                        alt="Candidate Video Feed"
+                        className="w-full h-full object-cover transition-opacity duration-300"
+                        onError={(e) => {
+                          console.error('Image load error:', e);
+                          // Use enhanced error recovery
+                          handleFrameError();
+                        }}
+                        onLoad={() => {
+                          // Clear any previous errors when image loads successfully
+                          setFrameError(null);
+                        }}
+                        style={{ 
+                          imageRendering: 'auto',
+                          backfaceVisibility: 'hidden',
+                          transform: 'translateZ(0)'
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Waiting for Candidate</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Candidate needs to click "Start Interview"</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    
+                    {/* Frame error overlay */}
+                    {frameError && (
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900/80 dark:text-red-200 rounded text-xs">
+                        {frameError}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -300,6 +527,8 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                     <li>• Object detection (phones, books, etc.)</li>
                     <li>• Face tracking and analysis</li>
                     <li>• Automatic event logging</li>
+                    <li>• Stable frame buffering (no flickering)</li>
+                    <li>• Frame validation and error handling</li>
                   </ul>
                 </div>
               </div>
@@ -331,19 +560,19 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                       <h3 className="font-semibold text-blue-800 dark:text-blue-200">Duration</h3>
                       <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {interview.duration || 0} min
+                        {freshInterviewData.duration !== undefined ? freshInterviewData.duration : (interview.duration || 0)} min
                       </p>
                     </div>
                     <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
                       <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Focus Lost</h3>
                       <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                        {interview.focusLostCount || 0}
+                        {freshInterviewData.focusLostCount !== undefined ? freshInterviewData.focusLostCount : (interview.focusLostCount || 0)}
                       </p>
                     </div>
                     <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
                       <h3 className="font-semibold text-red-800 dark:text-red-200">Suspicious Events</h3>
                       <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                        {interview.suspiciousEventsCount || 0}
+                        {freshInterviewData.suspiciousEventsCount !== undefined ? freshInterviewData.suspiciousEventsCount : (interview.suspiciousEventsCount || 0)}
                       </p>
                     </div>
                   </div>

@@ -161,7 +161,12 @@ router.post('/:id/end', async (req, res) => {
     // Count events by type
     const events = await Event.find({ interviewId: id });
     const totalEvents = events.length;
-    console.log('Found events:', totalEvents);
+    console.log(`📊 Found ${totalEvents} events for interview ${id}:`);
+    
+    // Debug: Log all events
+    events.forEach((event, index) => {
+      console.log(`  ${index + 1}. ${event.eventType} - ${event.message} (${event.severity})`);
+    });
 
     const focusLostCount = events.filter(e => e.eventType === 'focus_lost').length;
     const suspiciousEventsCount = events.filter(e =>
@@ -170,8 +175,10 @@ router.post('/:id/end', async (req, res) => {
       e.eventType === 'face_missing'
     ).length;
     
-    console.log('Focus lost count:', focusLostCount);
-    console.log('Suspicious events count:', suspiciousEventsCount);
+    console.log(`📊 Event counts for interview ${id}:`);
+    console.log(`  Focus lost count: ${focusLostCount}`);
+    console.log(`  Suspicious events count: ${suspiciousEventsCount}`);
+    console.log(`  Total events: ${totalEvents}`);
 
     // Calculate integrity score with detailed deductions
     let deductions = 0;
@@ -291,17 +298,30 @@ router.post('/:id/video-stream', async (req, res) => {
     const { id } = req.params;
     const { image, timestamp } = req.body;
 
-    console.log(`Received video frame for interview ${id}`);
+    console.log(`📹 Received video frame for interview ${id}`);
+    console.log(`📹 Image data length: ${image ? image.length : 'null'}`);
+    console.log(`📹 Timestamp: ${timestamp}`);
 
     // Forward video frame to interviewer via Socket.IO
     const io = req.app.get('io');
     if (io) {
+      const roomSize = io.sockets.adapter.rooms.get(id)?.size || 0;
+      console.log(`📹 Room ${id} has ${roomSize} connected clients`);
+      
+      // Log all connected sockets in this room
+      const room = io.sockets.adapter.rooms.get(id);
+      if (room) {
+        console.log(`📹 Connected socket IDs in room ${id}:`, Array.from(room));
+      } else {
+        console.log(`📹 No room found for interview ${id}`);
+      }
+      
       io.to(id).emit('candidate-video-frame', {
         interviewId: id,
         image: image,
         timestamp: timestamp
       });
-      console.log(`Video frame forwarded to interview ${id}`);
+      console.log(`📹 Video frame forwarded to interview ${id} (room size: ${roomSize})`);
     } else {
       console.error('Socket.IO instance not available');
     }

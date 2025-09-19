@@ -242,7 +242,7 @@ const CandidateReport = ({ interviewId, onBack }) => {
             <div>
               <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3">Event Types</h3>
               <div className="space-y-2">
-                {Object.entries(report.statistics.eventTypes).map(([type, count]) => (
+                {Object.entries(report.statistics?.eventTypes || {}).map(([type, count]) => (
                   <div key={type} className="flex justify-between items-center">
                     <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
                       {type.replace('_', ' ')}
@@ -258,7 +258,7 @@ const CandidateReport = ({ interviewId, onBack }) => {
             <div>
               <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3">Severity Levels</h3>
               <div className="space-y-2">
-                {Object.entries(report.statistics.severityCounts).map(([severity, count]) => (
+                {Object.entries(report.statistics?.severityCounts || {}).map(([severity, count]) => (
                   <div key={severity} className="flex justify-between items-center">
                     <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
                       {severity} Severity

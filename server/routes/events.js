@@ -9,7 +9,13 @@ router.post('/:id', async (req, res) => {
     const { id } = req.params;
     const eventData = req.body;
     
-    console.log(`Received event for interview ${id}:`, eventData);
+    console.log(`📊 Received event for interview ${id}:`, {
+      eventType: eventData.eventType,
+      message: eventData.message,
+      severity: eventData.severity,
+      timestamp: eventData.timestamp,
+      metadata: eventData.metadata
+    });
     
     // Store event in database
     const event = new Event({
@@ -22,20 +28,20 @@ router.post('/:id', async (req, res) => {
     });
     
     await event.save();
-    console.log(`Event saved to database: ${eventData.eventType}`);
+    console.log(`✅ Event saved to database: ${eventData.eventType} for interview ${id}`);
     
     // Forward event to interviewer via Socket.IO
     const io = req.app.get('io');
     if (io) {
       io.to(id).emit('proctoring-event', eventData);
-      console.log(`Event forwarded to interviewer: ${eventData.eventType}`);
+      console.log(`📡 Event forwarded to interviewer: ${eventData.eventType}`);
     } else {
-      console.error('Socket.IO instance not available');
+      console.error('❌ Socket.IO instance not available');
     }
     
     res.json({ success: true });
   } catch (error) {
-    console.error('Error handling event:', error);
+    console.error('❌ Error handling event:', error);
     res.status(500).json({ error: 'Failed to handle event' });
   }
 });
