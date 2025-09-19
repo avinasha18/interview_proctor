@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: exam-proctor-client
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_BACKEND_URL
+        value: https://your-server-app.onrender.com
