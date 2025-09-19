@@ -30,7 +30,8 @@ const io = new Server(server, {
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increase payload limit
+app.use(express.json({ limit: '50mb' })); // Increase payload limit for video chunks
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/proctoring';
@@ -47,6 +48,18 @@ app.use('/api/recording', recordingRoutes);
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Global error handler for PayloadTooLargeError
+app.use((error, req, res, next) => {
+  if (error.type === 'entity.too.large') {
+    console.log('⚠️ PayloadTooLargeError caught:', error.message);
+    return res.status(413).json({ 
+      error: 'Request entity too large',
+      message: 'The request payload exceeds the maximum allowed size'
+    });
+  }
+  next(error);
 });
 
 // Make io instance available to routes
@@ -69,6 +82,55 @@ io.on('connection', (socket) => {
       interviewId: interviewId,
       message: 'Candidate has started the interview'
     });
+  });
+
+  socket.on('candidate-leaving', async (data) => {
+    console.log(`Candidate leaving interview ${data.interviewId}`);
+    
+    try {
+      const interview = await Interview.findById(data.interviewId);
+      
+      if (interview && interview.status === 'active') {
+        // Update interview status to terminated
+        interview.status = 'terminated';
+        interview.endTime = new Date();
+        await interview.save();
+        
+        console.log(`Interview ${data.interviewId} terminated - candidate left`);
+        
+        // Auto-stop recording if it's still active
+        try {
+          const videoRecordingService = (await import('./services/videoRecordingService.js')).default;
+          
+          if (videoRecordingService.hasRecording(data.interviewId)) {
+            const recordingStatus = videoRecordingService.getRecordingStatus(data.interviewId);
+            
+            if (recordingStatus && recordingStatus.isRecording) {
+              console.log(`🛑 Auto-stopping recording for candidate leaving: ${data.interviewId}`);
+              const stopResult = await videoRecordingService.stopRecording(data.interviewId);
+              
+              if (stopResult.success) {
+                console.log(`✅ Auto-stopped recording successfully for candidate leaving: ${data.interviewId}`);
+                interview.videoUrl = stopResult.videoUrl;
+                await interview.save();
+              }
+            }
+          }
+        } catch (recordingError) {
+          console.error('Error auto-stopping recording:', recordingError);
+        }
+        
+        // Notify interviewer immediately
+        socket.to(data.interviewId).emit('candidate-disconnected', {
+          interviewId: data.interviewId,
+          status: 'terminated',
+          message: 'Candidate left the interview',
+          timestamp: data.timestamp
+        });
+      }
+    } catch (error) {
+      console.error('Error handling candidate leaving:', error);
+    }
   });
 
   socket.on('disconnect', async () => {

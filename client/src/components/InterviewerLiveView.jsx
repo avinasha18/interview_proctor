@@ -181,18 +181,18 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Live Interview Monitoring</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Live Interview Monitoring</h1>
               <div className="mt-2 flex items-center space-x-4">
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                   <strong>Candidate:</strong> {interview.candidateName}
                 </p>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                   <strong>Email:</strong> {interview.candidateEmail}
                 </p>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(interviewStatus)}`}>
@@ -201,21 +201,22 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+              <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-2 ${
                 isConnected 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
               }`}>
-                {isConnected ? 'Connected' : 'Disconnected'}
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
               </div>
               {interviewStatus === 'active' && (
                 <button
                   onClick={endInterview}
                   disabled={isEndingInterview}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
+                  className={`px-4 py-2 rounded-lg transition-colors font-medium ${
                     isEndingInterview
                       ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-red-600 text-white hover:bg-red-700 shadow-sm'
                   }`}
                 >
                   {isEndingInterview ? 'Ending...' : 'End Interview'}
@@ -223,7 +224,7 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
               )}
               <button
                 onClick={onBack}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors font-medium shadow-sm"
               >
                 Back to Dashboard
               </button>
@@ -233,7 +234,7 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -241,8 +242,8 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Error</h3>
-                <div className="mt-2 text-sm text-red-700">{error}</div>
+                <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
+                <div className="mt-2 text-sm text-red-700 dark:text-red-300">{error}</div>
               </div>
             </div>
           </div>
@@ -253,19 +254,19 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Candidate Video Feed */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
                 <div className="mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Candidate Video Feed</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Candidate Video Feed</h3>
                   <div className="flex items-center space-x-4">
                     <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      candidateVideoFrame ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      candidateVideoFrame ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                     }`}>
                       {candidateVideoFrame ? 'Live' : 'Waiting for Candidate'}
                     </div>
                     {candidateVideoFrame && (
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="text-sm text-green-600">Streaming</span>
+                        <span className="text-sm text-green-600 dark:text-green-400">Streaming</span>
                       </div>
                     )}
                   </div>
@@ -280,21 +281,21 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                       style={{ maxHeight: '400px' }}
                     />
                   ) : (
-                    <div className="w-full h-64 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
+                    <div className="w-full h-64 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center">
                       <div className="text-center">
-                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
-                        <p className="mt-2 text-sm text-gray-500">Waiting for Candidate</p>
-                        <p className="text-xs text-gray-400 mt-1">Candidate needs to click "Start Interview"</p>
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Waiting for Candidate</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Candidate needs to click "Start Interview"</p>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <h4 className="text-sm font-medium text-blue-800 mb-1">Monitoring Status</h4>
-                  <ul className="text-xs text-blue-700 space-y-1">
+                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Monitoring Status</h4>
+                  <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
                     <li>• Real-time focus detection</li>
                     <li>• Object detection (phones, books, etc.)</li>
                     <li>• Face tracking and analysis</li>
@@ -310,46 +311,46 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 border border-gray-200 dark:border-gray-700">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                 {interviewStatus === 'completed' ? 'Interview Completed' : 
                  interviewStatus === 'terminated' ? 'Interview Terminated' : 'Interview Scheduled'}
               </h2>
               
               {interviewStatus === 'terminated' ? (
                 <div className="space-y-4">
-                  <div className="p-4 bg-red-50 rounded-lg">
-                    <h3 className="text-lg font-semibold text-red-800 mb-2">Interview Terminated</h3>
-                    <p className="text-red-700">
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">Interview Terminated</h3>
+                    <p className="text-red-700 dark:text-red-300">
                       The candidate disconnected from the interview. The session has been automatically terminated.
                     </p>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-blue-800">Duration</h3>
-                      <p className="text-2xl font-bold text-blue-600">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <h3 className="font-semibold text-blue-800 dark:text-blue-200">Duration</h3>
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                         {interview.duration || 0} min
                       </p>
                     </div>
-                    <div className="bg-yellow-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-yellow-800">Focus Lost</h3>
-                      <p className="text-2xl font-bold text-yellow-600">
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Focus Lost</h3>
+                      <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                         {interview.focusLostCount || 0}
                       </p>
                     </div>
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-red-800">Suspicious Events</h3>
-                      <p className="text-2xl font-bold text-red-600">
+                    <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+                      <h3 className="font-semibold text-red-800 dark:text-red-200">Suspicious Events</h3>
+                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                         {interview.suspiciousEventsCount || 0}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Session Summary</h3>
-                    <p className="text-gray-600">
+                  <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg mb-6 border border-gray-200 dark:border-gray-600">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Session Summary</h3>
+                    <p className="text-gray-600 dark:text-gray-300">
                       Interview was terminated due to candidate disconnection. 
                       Partial data is available for the duration the candidate was connected.
                     </p>
@@ -358,54 +359,105 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                   <ReportDownload interviewId={interview._id} />
                 </div>
               ) : interviewStatus === 'completed' ? (
-                <div className="space-y-4">
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">Interview Statistics</h3>
-                      <div className="flex items-center space-x-2">
+                <div className="space-y-6">
+                  {/* Header with Live Data Indicator */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Interview Statistics</h3>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">Comprehensive analysis of the interview session</p>
+                      </div>
+                      <div className="flex items-center space-x-3">
                         {isRefreshingData && (
-                          <div className="flex items-center space-x-1 text-blue-600">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                            <span className="text-sm">Refreshing...</span>
+                          <div className="flex items-center space-x-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                            <span className="text-sm font-medium">Refreshing...</span>
                           </div>
                         )}
                         {freshInterviewData.duration !== undefined && !isRefreshingData && (
-                          <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                            ✅ Live Data
-                          </span>
+                          <div className="flex items-center space-x-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg border border-green-200 dark:border-green-800">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span className="text-sm font-medium">✅ Live Data</span>
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-blue-800">Duration</h3>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {freshInterviewData.duration !== undefined ? freshInterviewData.duration : (interview.duration || 0)} min
-                      </p>
+
+                  {/* Statistics Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-6 rounded-xl border border-blue-200 dark:border-blue-800 shadow-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Duration</p>
+                          <p className="text-3xl font-bold text-blue-800 dark:text-blue-200">
+                            {freshInterviewData.duration !== undefined ? freshInterviewData.duration : (interview.duration || 0)}
+                          </p>
+                          <p className="text-xs text-blue-600 dark:text-blue-400">minutes</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-yellow-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-yellow-800">Focus Lost</h3>
-                      <p className="text-2xl font-bold text-yellow-600">
-                        {freshInterviewData.focusLostCount !== undefined ? freshInterviewData.focusLostCount : (interview.focusLostCount || 0)}
-                      </p>
+
+                    <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-6 rounded-xl border border-yellow-200 dark:border-yellow-800 shadow-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Focus Lost</p>
+                          <p className="text-3xl font-bold text-yellow-800 dark:text-yellow-200">
+                            {freshInterviewData.focusLostCount !== undefined ? freshInterviewData.focusLostCount : (interview.focusLostCount || 0)}
+                          </p>
+                          <p className="text-xs text-yellow-600 dark:text-yellow-400">incidents</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-red-800">Suspicious Events</h3>
-                      <p className="text-2xl font-bold text-red-600">
-                        {freshInterviewData.suspiciousEventsCount !== undefined ? freshInterviewData.suspiciousEventsCount : (interview.suspiciousEventsCount || 0)}
-                      </p>
+
+                    <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 p-6 rounded-xl border border-red-200 dark:border-red-800 shadow-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-red-600 dark:text-red-400">Suspicious Events</p>
+                          <p className="text-3xl font-bold text-red-800 dark:text-red-200">
+                            {freshInterviewData.suspiciousEventsCount !== undefined ? freshInterviewData.suspiciousEventsCount : (interview.suspiciousEventsCount || 0)}
+                          </p>
+                          <p className="text-xs text-red-600 dark:text-red-400">detected</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Integrity Score</h3>
-                    <div className="flex items-center justify-center">
-                      <div className={`text-4xl font-bold ${
-                        (freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 80 ? 'text-green-600' :
-                        (freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 60 ? 'text-yellow-600' : 'text-red-600'
+                  {/* Integrity Score */}
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-8 rounded-xl border border-gray-200 dark:border-gray-600 shadow-lg">
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Integrity Score</h3>
+                      <div className="relative inline-block">
+                        <div className={`text-6xl font-bold ${
+                          (freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 80 ? 'text-green-600 dark:text-green-400' :
+                          (freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 60 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)}
+                        </div>
+                        <div className="text-2xl font-semibold text-gray-600 dark:text-gray-400">/100</div>
+                      </div>
+                      <div className={`mt-4 px-4 py-2 rounded-full text-sm font-medium inline-block ${
+                        (freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 80 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200' :
+                        (freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 60 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
                       }`}>
-                        {freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)}/100
+                        {(freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 80 ? 'Excellent Performance' :
+                         (freshInterviewData.integrityScore !== undefined ? freshInterviewData.integrityScore : (interview.integrityScore || 0)) >= 60 ? 'Good Performance' : 'Needs Improvement'}
                       </div>
                     </div>
                   </div>
@@ -414,18 +466,18 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-gray-600">
-                    Interview Code: <strong>{interview.interviewCode}</strong>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Interview Code: <strong className="text-gray-900 dark:text-gray-100">{interview.interviewCode}</strong>
                   </p>
-                  <p className="text-gray-600">
-                    Candidate Email: <strong>{interview.candidateEmail}</strong>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Candidate Email: <strong className="text-gray-900 dark:text-gray-100">{interview.candidateEmail}</strong>
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Waiting for candidate to join...
                   </p>
-                  <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      Share this code with the candidate: <strong>{interview.interviewCode}</strong>
+                  <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Share this code with the candidate: <strong className="text-yellow-900 dark:text-yellow-100">{interview.interviewCode}</strong>
                     </p>
                   </div>
                 </div>
@@ -436,13 +488,13 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
 
         {/* Interview Controls */}
         {interviewStatus === 'active' && (
-          <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   Interview Session: {interview.interviewCode}
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                   Started: {new Date(interview.startTime).toLocaleString()}
                 </p>
               </div>
@@ -452,10 +504,10 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                   <button
                     onClick={fetchFreshInterviewData}
                     disabled={isRefreshingData}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
+                    className={`px-4 py-2 rounded-lg transition-colors font-medium shadow-sm ${
                       isRefreshingData
-                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                        ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-300 cursor-not-allowed'
+                        : 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600'
                     }`}
                   >
                     {isRefreshingData ? '🔄 Refreshing...' : '🔄 Refresh Data'}
@@ -464,17 +516,17 @@ const InterviewerLiveView = ({ interview, onBack, onRefresh }) => {
                 <button
                   onClick={endInterview}
                   disabled={isEndingInterview}
-                  className={`px-4 py-2 rounded-lg transition-colors ${
+                  className={`px-4 py-2 rounded-lg transition-colors font-medium shadow-sm ${
                     isEndingInterview
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-red-600 text-white hover:bg-red-700'
+                      ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-300 cursor-not-allowed'
+                      : 'bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600'
                   }`}
                 >
                   {isEndingInterview ? 'Ending...' : 'End Interview'}
                 </button>
                 <button
                   onClick={() => deleteInterview(interview._id)}
-                  className="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors"
+                  className="px-4 py-2 bg-red-800 dark:bg-red-900 text-white rounded-lg hover:bg-red-900 dark:hover:bg-red-800 transition-colors font-medium shadow-sm"
                 >
                   Delete Interview
                 </button>

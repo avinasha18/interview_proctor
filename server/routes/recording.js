@@ -50,6 +50,12 @@ router.post('/:id/chunk', async (req, res) => {
       return res.status(400).json({ error: 'Video blob is required' });
     }
 
+    // Check if the payload is too large
+    if (videoBlob.length > 50 * 1024 * 1024) { // 50MB limit
+      console.log('⚠️ Video chunk too large, skipping...');
+      return res.status(413).json({ error: 'Video chunk too large' });
+    }
+
     const result = await videoRecordingService.addVideoChunk(id, videoBlob);
     
     if (result.success) {

@@ -234,6 +234,13 @@ router.get('/:id/summary', async (req, res) => {
       }
     });
 
+    // Calculate duration properly
+    let duration = 0;
+    if (interview.startTime) {
+      const endTime = interview.endTime || new Date();
+      duration = Math.round((endTime - interview.startTime) / (1000 * 60)); // in minutes
+    }
+
     const summary = {
       interview: {
         id: interview._id,
@@ -242,7 +249,7 @@ router.get('/:id/summary', async (req, res) => {
         interviewerName: interview.interviewerName || 'Unknown',
         startTime: interview.startTime,
         endTime: interview.endTime,
-        duration: interview.duration || 0,
+        duration: duration,
         status: interview.status || 'completed'
       },
       statistics: {
