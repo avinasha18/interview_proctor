@@ -15,10 +15,10 @@ class ProctoringService:
         self.sessions = {}
         
         # Configuration
-        self.focus_timeout = 3  # seconds (reduced from 7 to 3)
-        self.face_timeout = 5   # seconds (reduced from 10 to 5)
+        self.focus_timeout = 7  # seconds (reduced from 7 to 3)
+        self.face_timeout = 10  # seconds (reduced from 10 to 5)
         self.drowsiness_threshold = 0.25
-        self.focus_threshold = 0.35  # 15% deviation from center
+        self.focus_threshold = 0.25  # Reduced from 0.35 to 0.25 for more sensitive detection
         self.ear_frames = 0  # Counter for consecutive low EAR frames
         self.ear_threshold_frames = 3  # Number of frames to confirm drowsiness
         
@@ -401,13 +401,13 @@ class ProctoringService:
                             label = self.model.names[class_id]
                             
                             # Reduced confidence thresholds for better detection
-                            if label == "cell phone" and confidence > 0.3:
+                            if label == "cell phone" and confidence > 0.2:  # Reduced from 0.3 to 0.2
                                 threshold_met = True
-                            elif label in ["book"] and confidence > 0.1:
+                            elif label in ["book"] and confidence > 0.05:  # Reduced from 0.1 to 0.05
                                 threshold_met = True
-                            elif label in ["laptop"] and confidence > 0.2:
+                            elif label in ["laptop"] and confidence > 0.15:  # Reduced from 0.2 to 0.15
                                 threshold_met = True
-                            elif label in self.target_objects and confidence > 0.3:
+                            elif label in self.target_objects and confidence > 0.2:  # Reduced from 0.3 to 0.2
                                 threshold_met = True
                             else:
                                 threshold_met = False
