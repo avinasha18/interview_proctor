@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: proctoring-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: proctoring
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - proctoring-network
+
+  # Node.js Backend
+  backend:
+    build: ./server
+    container_name: proctoring-backend
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/proctoring?authSource=admin
+      PORT: 3001
+      NODE_ENV: production
+      CLIENT_URL: http://localhost:3000
+      PYTHON_SERVICE_URL: http://python-service:8000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mongodb
+    networks:
+      - proctoring-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Python ML Service
+  python-service:
+    build: ./app
+    container_name: proctoring-python-service
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:3001
+      HOST: 0.0.0.0
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - backend
+    networks:
+      - proctoring-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # React Frontend
+  frontend:
+    build: ./client
+    container_name: proctoring-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+      - python-service
+    networks:
+      - proctoring-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mongodb_data:
+
+networks:
+  proctoring-network:
+    driver: bridge
