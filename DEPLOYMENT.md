@@ -156,7 +156,7 @@ docker run -d \
 
 #### Backend (.env)
 ```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/proctoring
+MONGODB_URI=
 PORT=3001
 NODE_ENV=production
 CLIENT_URL=https://your-frontend-domain.com
