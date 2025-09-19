@@ -137,7 +137,7 @@ class ProctoringService:
             # Average EAR
             avg_ear = (left_ear + right_ear) / 2
             
-            # print(f"👁️ EAR Values - Left: {left_ear:.3f}, Right: {right_ear:.3f}, Avg: {avg_ear:.3f}")
+            print(f"👁️ EAR Values - Left: {left_ear:.3f}, Right: {right_ear:.3f}, Avg: {avg_ear:.3f}")
             
             # LOWERED threshold for better detection
             drowsiness_threshold = 0.18  # Increased to catch your range
@@ -195,7 +195,7 @@ class ProctoringService:
             
             is_focused = is_focused_horizontal and is_focused_vertical
             
-            # print(f"🎯 Focus Analysis - H_dev: {horizontal_deviation:.3f}, V_dev: {vertical_deviation:.3f}, Focused: {is_focused}")
+            print(f"🎯 Focus Analysis - H_dev: {horizontal_deviation:.3f}, V_dev: {vertical_deviation:.3f}, Focused: {is_focused}")
             
             return is_focused
             

@@ -51,6 +51,24 @@ const CandidatePortal = ({ initialCode = '' }) => {
     if (savedCode && !interviewCode) {
       setInterviewCode(savedCode);
     }
+    
+    // Load saved interview if it exists
+    if (savedInterview && !interview) {
+      try {
+        const parsedInterview = JSON.parse(savedInterview);
+        console.log('🔄 Loading interview from localStorage:', parsedInterview);
+        console.log('🔄 Interview ID from localStorage:', parsedInterview.id);
+        console.log('🔄 Interview ID length from localStorage:', parsedInterview.id?.length);
+        setInterview(parsedInterview);
+      } catch (error) {
+        console.error('❌ Error parsing saved interview:', error);
+        localStorage.removeItem('currentInterview');
+      }
+    }
+    
+    if (savedStarted === 'true') {
+      setIsInterviewStarted(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -301,6 +319,11 @@ const CandidatePortal = ({ initialCode = '' }) => {
       }
       
       // Call server API to end interview
+      console.log('🔍 Full interview object:', interview);
+      console.log('🔍 Interview ID being sent:', interview.id);
+      console.log('🔍 Interview ID length:', interview.id?.length);
+      console.log('🔍 Full API URL:', `${BACKEND_URL}/api/interviews/${interview.id}/end`);
+      
       const response = await axios.post(`${BACKEND_URL}/api/interviews/${interview.id}/end`);
       
       if (response.data.success) {

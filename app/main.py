@@ -109,11 +109,11 @@ async def websocket_endpoint(websocket: WebSocket, interview_id: str):
                     "timestamp": time.time(),
                     "frame_processed": True
                 }))
-                
+                print(f"📤 Sent events to client: {events}")
                 # Send events to Node.js backend only if there are events
                 if events:
                     await send_events_to_backend(interview_id, events)
-                
+                print(f"📤 Sent events to backend: {events}")
     except WebSocketDisconnect:
         print(f"WebSocket disconnected for interview {interview_id}")
     except Exception as e:
