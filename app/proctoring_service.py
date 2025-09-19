@@ -15,10 +15,10 @@ class ProctoringService:
         self.sessions = {}
         
         # Configuration
-        self.focus_timeout = 7  # seconds (reduced from 7 to 3)
-        self.face_timeout = 10  # seconds (reduced from 10 to 5)
+        self.focus_timeout = 5  # seconds (reduced for more responsive detection)
+        self.face_timeout = 8   # seconds (reduced for more responsive detection)
         self.drowsiness_threshold = 0.25
-        self.focus_threshold = 0.25  # Reduced from 0.35 to 0.25 for more sensitive detection
+        self.focus_threshold = 0.35  # 15% deviation from center
         self.ear_frames = 0  # Counter for consecutive low EAR frames
         self.ear_threshold_frames = 3  # Number of frames to confirm drowsiness
         
@@ -29,7 +29,7 @@ class ProctoringService:
         
         # Event deduplication
         self.last_events = {}  # Store last event of each type per session
-        self.event_cooldown = 1  # Minimum seconds between same event type (reduced from 3 to 1)
+        self.event_cooldown = 3  # Minimum seconds between same event type (reduced for better detection)
         
     async def initialize(self):
         """Initialize ML models"""
@@ -137,7 +137,7 @@ class ProctoringService:
             # Average EAR
             avg_ear = (left_ear + right_ear) / 2
             
-            print(f"👁️ EAR Values - Left: {left_ear:.3f}, Right: {right_ear:.3f}, Avg: {avg_ear:.3f}")
+            # print(f"👁️ EAR Values - Left: {left_ear:.3f}, Right: {right_ear:.3f}, Avg: {avg_ear:.3f}")
             
             # LOWERED threshold for better detection
             drowsiness_threshold = 0.18  # Increased to catch your range
@@ -195,7 +195,7 @@ class ProctoringService:
             
             is_focused = is_focused_horizontal and is_focused_vertical
             
-            print(f"🎯 Focus Analysis - H_dev: {horizontal_deviation:.3f}, V_dev: {vertical_deviation:.3f}, Focused: {is_focused}")
+            # print(f"🎯 Focus Analysis - H_dev: {horizontal_deviation:.3f}, V_dev: {vertical_deviation:.3f}, Focused: {is_focused}")
             
             return is_focused
             
@@ -247,23 +247,14 @@ class ProctoringService:
     def should_send_event(self, interview_id: str, event_type: str, current_time: float) -> bool:
         """Check if event should be sent (deduplication logic)"""
         if interview_id not in self.sessions:
-            print(f"❌ No session found for interview {interview_id}")
             return False
             
         session = self.sessions[interview_id]
         last_event_time = session["last_event_times"].get(event_type, 0)
-        time_since_last = current_time - last_event_time
         
-        # Debug: Log deduplication check
-        should_send = time_since_last >= self.event_cooldown
-        print(f"🔄 Event deduplication check for {event_type}:")
-        print(f"  Last event time: {last_event_time}")
-        print(f"  Current time: {current_time}")
-        print(f"  Time since last: {time_since_last:.2f}s")
-        print(f"  Cooldown: {self.event_cooldown}s")
-        print(f"  Should send: {should_send}")
+        # Only send event if enough time has passed since last event of same type
+        return current_time - last_event_time >= self.event_cooldown
         
-        return should_send
     
     def record_event_time(self, interview_id: str, event_type: str, current_time: float):
         """Record the time when an event was sent"""
@@ -401,13 +392,13 @@ class ProctoringService:
                             label = self.model.names[class_id]
                             
                             # Reduced confidence thresholds for better detection
-                            if label == "cell phone" and confidence > 0.2:  # Reduced from 0.3 to 0.2
+                            if label == "cell phone" and confidence > 0.25:
                                 threshold_met = True
-                            elif label in ["book"] and confidence > 0.05:  # Reduced from 0.1 to 0.05
+                            elif label == "book" and confidence > 0.15:  # Lower threshold for books
                                 threshold_met = True
-                            elif label in ["laptop"] and confidence > 0.15:  # Reduced from 0.2 to 0.15
+                            elif label == "laptop" and confidence > 0.2:
                                 threshold_met = True
-                            elif label in self.target_objects and confidence > 0.2:  # Reduced from 0.3 to 0.2
+                            elif label in self.target_objects and confidence > 0.25:
                                 threshold_met = True
                             else:
                                 threshold_met = False
@@ -450,14 +441,6 @@ class ProctoringService:
         for event in events:
             event["timestamp"] = current_time
             event["interview_id"] = interview_id
-        
-        # Debug: Log events being returned
-        if events:
-            print(f"📊 Generated {len(events)} events for interview {interview_id}:")
-            for i, event in enumerate(events):
-                print(f"  {i+1}. {event['eventType']} - {event['message']} ({event['severity']})")
-        else:
-            print(f"📊 No events generated for interview {interview_id}")
         
         return events
     

@@ -263,8 +263,8 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
       // Draw video frame to canvas
       ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
 
-      // Convert canvas to base64 with reduced quality to prevent 431 errors
-      const imageData = canvas.toDataURL('image/jpeg', 0.3);
+      // Convert canvas to base64 with better quality for ML analysis
+      const imageData = canvas.toDataURL('image/jpeg', 0.7);
       const base64Data = imageData.split(',')[1];
 
       // Send directly to backend
@@ -288,9 +288,9 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
       const video = videoRef.current;
       const ctx = canvas.getContext('2d');
 
-      // Reduce frame size to prevent payload errors (431 Request Header Fields Too Large)
-      const maxWidth = 480;
-      const maxHeight = 360;
+      // Use higher resolution for ML model analysis
+      const maxWidth = 640;
+      const maxHeight = 480;
       const videoWidth = video.videoWidth;
       const videoHeight = video.videoHeight;
       
@@ -316,8 +316,8 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
       // Draw video frame to canvas with scaling
       ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
 
-      // Convert canvas to base64 with higher compression
-      const imageData = canvas.toDataURL('image/jpeg', 0.3); // Further reduced quality for smaller payload
+      // Convert canvas to base64 with better quality for ML analysis
+      const imageData = canvas.toDataURL('image/jpeg', 0.7); // Higher quality for ML model
       const base64Data = imageData.split(',')[1];
 
       // Send to Python service for ML analysis

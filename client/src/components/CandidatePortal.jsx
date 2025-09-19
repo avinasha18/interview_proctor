@@ -275,6 +275,59 @@ const CandidatePortal = ({ initialCode = '' }) => {
     }
   };
 
+  const endInterview = async () => {
+    if (!interview) return;
+    
+    try {
+      console.log('📤 Ending interview properly...');
+      
+      // Stop video recording first
+      if (isRecording) {
+        try {
+          console.log('🛑 Stopping video recording...');
+          const result = await videoRecordingService.stopRecording(interview.id);
+          
+          if (result.success) {
+            console.log('✅ Video recording stopped successfully');
+            setRecordingStatus('completed');
+          } else {
+            console.error('❌ Failed to stop video recording:', result.error);
+            videoRecordingService.forceStopRecording();
+          }
+        } catch (error) {
+          console.error('❌ Error stopping video recording:', error);
+          videoRecordingService.forceStopRecording();
+        }
+      }
+      
+      // Call server API to end interview
+      const response = await axios.post(`${BACKEND_URL}/api/interviews/${interview.id}/end`);
+      
+      if (response.data.success) {
+        console.log('✅ Interview ended successfully on server');
+        
+        // Notify interviewer that candidate ended the interview
+        if (socket) {
+          socket.emit('candidate-ended-interview', {
+            interviewId: interview.id,
+            candidateName: interview.candidateName,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Show report
+        setIsInterviewStarted(false);
+        setShowReport(true);
+        setIsRecording(false);
+        setRecordingStatus('completed');
+        setError(null);
+      }
+    } catch (error) {
+      console.error('❌ Error ending interview:', error);
+      setError('Failed to end interview: ' + error.message);
+    }
+  };
+
   const leaveInterview = async () => {
     // Notify server that candidate is leaving
     if (socket && interview) {
@@ -492,6 +545,13 @@ const CandidatePortal = ({ initialCode = '' }) => {
                       RECORDING
                     </Badge>
                   )}
+                  <Button
+                    onClick={endInterview}
+                    variant="outline"
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  >
+                    End Interview
+                  </Button>
                   <Button
                     onClick={leaveInterview}
                     variant="outline"

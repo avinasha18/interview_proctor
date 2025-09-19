@@ -94,6 +94,56 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('candidate-ended-interview', async (data) => {
+    console.log(`Candidate ended interview ${data.interviewId}`);
+    
+    try {
+      const interview = await Interview.findById(data.interviewId);
+      
+      if (interview && interview.status === 'active') {
+        // Update interview status to completed (not terminated)
+        interview.status = 'completed';
+        interview.endTime = new Date();
+        
+        // Calculate final statistics
+        const events = await Event.find({ interviewId: data.interviewId });
+        const totalEvents = events.length;
+        const focusLostCount = events.filter(e => e.eventType === 'focus_lost').length;
+        const suspiciousEventsCount = events.filter(e =>
+          e.eventType === 'suspicious_object' ||
+          e.eventType === 'multiple_faces' ||
+          e.eventType === 'face_missing'
+        ).length;
+        
+        // Calculate integrity score
+        let deductions = 0;
+        deductions += focusLostCount * 3;
+        deductions += suspiciousEventsCount * 5;
+        const integrityScore = Math.max(0, 100 - deductions);
+        
+        interview.duration = Math.round((interview.endTime - interview.startTime) / (1000 * 60));
+        interview.totalEvents = totalEvents;
+        interview.focusLostCount = focusLostCount;
+        interview.suspiciousEventsCount = suspiciousEventsCount;
+        interview.integrityScore = integrityScore;
+        
+        await interview.save();
+        
+        console.log(`Interview ${data.interviewId} completed by candidate`);
+        
+        // Notify interviewer immediately
+        socket.to(data.interviewId).emit('interview-ended', {
+          interviewId: data.interviewId,
+          status: 'completed',
+          integrityScore: integrityScore,
+          endedBy: 'candidate'
+        });
+      }
+    } catch (error) {
+      console.error('Error handling candidate ending interview:', error);
+    }
+  });
+
   socket.on('candidate-leaving', async (data) => {
     console.log(`Candidate leaving interview ${data.interviewId}`);
     
