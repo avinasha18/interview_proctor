@@ -116,6 +116,8 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
 
       ws.onopen = () => {
         console.log('✅ Connected to Python ML service');
+        console.log('🔍 WebSocket URL:', wsUrl);
+        console.log('🔍 WebSocket readyState:', ws.readyState);
         startStreaming();
       };
 
@@ -142,6 +144,7 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
         console.error('❌ WebSocket URL:', wsUrl);
         console.error('❌ Python Service URL:', pythonServiceUrl);
         console.error('❌ Interview ID:', interviewId);
+        console.error('❌ WebSocket readyState:', ws.readyState);
         setError(`Connection to ML service failed: ${pythonServiceUrl}`);
         onError && onError(`Connection to ML service failed: ${pythonServiceUrl}`);
       };
@@ -327,9 +330,17 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
           timestamp: Date.now()
         };
         console.log('📤 Sending frame to Python ML service');
+        console.log('🔍 WebSocket readyState:', wsRef.current.readyState);
+        console.log('🔍 Message size:', JSON.stringify(message).length, 'bytes');
         wsRef.current.send(JSON.stringify(message));
+        console.log('✅ Frame sent to Python ML service');
       } else {
         console.log('❌ WebSocket not ready for ML service:', wsRef.current?.readyState);
+        console.log('❌ WebSocket exists:', !!wsRef.current);
+        if (wsRef.current) {
+          console.log('❌ WebSocket readyState:', wsRef.current.readyState);
+          console.log('❌ WebSocket URL:', wsRef.current.url);
+        }
       }
 
       // Send to backend for interviewer viewing (send only base64 part)
