@@ -16,7 +16,7 @@ const ReportDownload = ({ interviewId }) => {
 
     try {
       const response = await axios.get(
-        `${process.env.VITE_BACKEND_URL}/api/reports/${interviewId}/${format}`,
+        `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/reports/${interviewId}/${format}`,
         { responseType: 'blob' }
       );
 
@@ -59,7 +59,7 @@ const ReportDownload = ({ interviewId }) => {
 
     try {
       const response = await axios.get(
-        `${process.env.VITE_BACKEND_URL}/api/reports/${interviewId}/summary`
+        `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/reports/${interviewId}/summary`
       );
 
       if (response.data.success) {

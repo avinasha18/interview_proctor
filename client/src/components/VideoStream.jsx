@@ -137,7 +137,7 @@ const VideoStream = ({ interviewId, pythonServiceUrl, onError, onEvent, isActive
 
     try {
       console.log(`Sending video frame to backend for interview: ${interviewId}`);
-      const response = await fetch(`${process.env.VITE_BACKEND_URL}/api/interviews/${interviewId}/video-stream`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/interviews/${interviewId}/video-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

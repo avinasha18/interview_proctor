@@ -6,7 +6,7 @@ class VideoRecordingService {
     this.isRecording = false;
     this.recordingChunks = [];
     this.recordingInterval = null;
-    this.BACKEND_URL = process.env.VITE_BACKEND_URL;
+    this.BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
   }
 
   async startRecording(interviewId, candidateName) {

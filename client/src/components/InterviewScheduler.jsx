@@ -7,7 +7,7 @@ import Input from './ui/Input';
 import { Card, CardContent } from './ui/Card';
 import Badge from './ui/Badge';
 
-const BACKEND_URL = process.env.VITE_BACKEND_URL;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 const InterviewScheduler = ({ interviewerEmail, onInterviewScheduled }) => {
   const [formData, setFormData] = useState({
