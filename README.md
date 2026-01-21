@@ -75,6 +75,27 @@ cp env.example .env
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
+#### MediaPipe Models (Python 3.13+)
+The latest `mediapipe` package ships the Tasks API only (no `mp.solutions`).
+For face detection and face landmarks you must provide model assets:
+
+- Face detector model (e.g. `face_detector.tflite`)
+- Face landmarker model (e.g. `face_landmarker.task`)
+
+Download the models from the official docs and set the paths:
+
+- https://ai.google.dev/edge/mediapipe/solutions/vision/face_detector/python
+- https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker/python
+
+Then set in your `.env`:
+```env
+MP_FACE_DETECTOR_MODEL_PATH=/absolute/path/to/face_detector.tflite
+MP_FACE_LANDMARKER_MODEL_PATH=/absolute/path/to/face_landmarker.task
+```
+
+If you want the legacy `mp.solutions` API, use Python 3.11 and a MediaPipe
+version that still includes solutions.
+
 #### Frontend Setup
 ```bash
 cd client

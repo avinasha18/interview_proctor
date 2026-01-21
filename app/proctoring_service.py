@@ -3,15 +3,17 @@ import time
 import torch
 import mediapipe as mp
 import numpy as np
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import asyncio
 import math
+import os
 
 class ProctoringService:
     def __init__(self):
         self.model = None
         self.face_detector = None
         self.face_mesh = None
+        self.mp_mode = None
         self.sessions = {}
         
         # Configuration
@@ -40,24 +42,94 @@ class ProctoringService:
             print("YOLOv8 model loaded successfully")
             
             # Initialize MediaPipe face detection and face mesh
-            self.mp_face = mp.solutions.face_detection
-            self.mp_face_mesh = mp.solutions.face_mesh
-            self.face_detector = self.mp_face.FaceDetection(
-                model_selection=0,
-                min_detection_confidence=0.6
-            )
-            self.face_mesh = self.mp_face_mesh.FaceMesh(
-                static_image_mode=False,
-                max_num_faces=1,
-                refine_landmarks=True,
-                min_detection_confidence=0.6,
-                min_tracking_confidence=0.6
-            )
-            print("MediaPipe face detector and face mesh initialized")
+            if hasattr(mp, "solutions"):
+                self.mp_mode = "solutions"
+                self.face_detector = mp.solutions.face_detection.FaceDetection(
+                    model_selection=0,
+                    min_detection_confidence=0.6
+                )
+                self.face_mesh = mp.solutions.face_mesh.FaceMesh(
+                    static_image_mode=False,
+                    max_num_faces=1,
+                    refine_landmarks=True,
+                    min_detection_confidence=0.6,
+                    min_tracking_confidence=0.6
+                )
+                print("MediaPipe solutions initialized")
+            else:
+                self.mp_mode = "tasks"
+                from mediapipe.tasks.python import vision
+
+                face_detector_model = self._resolve_model_path(
+                    "MP_FACE_DETECTOR_MODEL_PATH",
+                    os.path.join("models", "face_detector.tflite"),
+                    "Face detector"
+                )
+                face_landmarker_model = self._resolve_model_path(
+                    "MP_FACE_LANDMARKER_MODEL_PATH",
+                    os.path.join("models", "face_landmarker.task"),
+                    "Face landmarker"
+                )
+
+                self.face_detector = vision.FaceDetector.create_from_options(
+                    vision.FaceDetectorOptions(
+                        base_options=mp.tasks.BaseOptions(
+                            model_asset_path=face_detector_model
+                        ),
+                        running_mode=vision.RunningMode.VIDEO,
+                        min_detection_confidence=0.6
+                    )
+                )
+                self.face_mesh = vision.FaceLandmarker.create_from_options(
+                    vision.FaceLandmarkerOptions(
+                        base_options=mp.tasks.BaseOptions(
+                            model_asset_path=face_landmarker_model
+                        ),
+                        running_mode=vision.RunningMode.VIDEO,
+                        num_faces=1,
+                        min_face_detection_confidence=0.6,
+                        min_face_presence_confidence=0.6,
+                        min_tracking_confidence=0.6
+                    )
+                )
+                print("MediaPipe Tasks API initialized")
             
         except Exception as e:
             print(f"Error initializing models: {e}")
             raise e
+
+    def _resolve_model_path(self, env_var: str, default_rel_path: str, label: str) -> str:
+        """Resolve and validate the model asset path for MediaPipe Tasks."""
+        default_path = os.path.join(os.path.dirname(__file__), default_rel_path)
+        model_path = os.getenv(env_var, default_path)
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(
+                f"{label} model not found at '{model_path}'. "
+                f"Download the model asset and set {env_var}."
+            )
+        return model_path
+
+    def _mp_image_from_rgb(self, img_rgb: np.ndarray) -> "mp.Image":
+        """Create a MediaPipe Image from an RGB numpy array."""
+        return mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+
+    def _detect_faces(self, img_rgb: np.ndarray, timestamp_ms: int) -> Tuple[List, List]:
+        """Run face detection and landmarking with MediaPipe."""
+        if self.mp_mode == "solutions":
+            face_results = self.face_detector.process(img_rgb)
+            face_mesh_results = self.face_mesh.process(img_rgb)
+            detections = face_results.detections or []
+            landmarks = []
+            if face_mesh_results.multi_face_landmarks:
+                landmarks = [lm.landmark for lm in face_mesh_results.multi_face_landmarks]
+            return detections, landmarks
+
+        mp_image = self._mp_image_from_rgb(img_rgb)
+        face_results = self.face_detector.detect_for_video(mp_image, timestamp_ms)
+        face_mesh_results = self.face_mesh.detect_for_video(mp_image, timestamp_ms)
+        detections = face_results.detections or []
+        landmarks = face_mesh_results.face_landmarks or []
+        return detections, landmarks
     
     def euclidean_distance(self, point1, point2):
         """Calculate Euclidean distance between two points"""
@@ -280,13 +352,13 @@ class ProctoringService:
         session = self.sessions[interview_id]
         
         # Face detection
-        face_results = self.face_detector.process(img_rgb)
-        face_mesh_results = self.face_mesh.process(img_rgb)
-        num_faces = 0
-        face_detected = False
+        timestamp_ms = int(current_time * 1000)
+        detections, face_landmarks_list = self._detect_faces(img_rgb, timestamp_ms)
+        num_faces = len(detections)
+        face_detected = num_faces > 0
         
-        if face_results.detections:
-            num_faces = len(face_results.detections)
+        if detections:
+            num_faces = len(detections)
             face_detected = True
             
             # Check for multiple faces
@@ -301,10 +373,10 @@ class ProctoringService:
                 print(f"🚨 Multiple faces detected: {num_faces}")
             
             # Face mesh analysis for focus and drowsiness
-            if face_mesh_results.multi_face_landmarks:
-                for face_landmarks in face_mesh_results.multi_face_landmarks:
+            if face_landmarks_list:
+                for face_landmarks in face_landmarks_list:
                     try:
-                        landmarks_list = face_landmarks.landmark
+                        landmarks_list = face_landmarks
                         
                         # Enhanced focus detection
                         is_focused = self.is_looking_at_screen_advanced(landmarks_list, w, h)
