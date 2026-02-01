@@ -24,10 +24,12 @@ A comprehensive video proctoring system that detects focus, suspicious objects, 
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   WebSocket     │    │   MongoDB        │    │   YOLOv5 +      │
+│   WebSocket     │    │   MongoDB        │    │   YOLOv8 +      │
 │   Connection    │    │   Database      │    │   MediaPipe     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
+
+**Full flow diagram (system, data flow, ML pipeline, models):** see [FLOW_DIAGRAM.md](FLOW_DIAGRAM.md).
 
 ## 🚀 Quick Start
 
@@ -190,6 +192,33 @@ FACE_TIMEOUT=10
 - **Railway**: Simple deployment with built-in databases
 - **AWS ECS**: Scalable container deployment
 - **Google Cloud Run**: Serverless container deployment
+
+## 📉 Evaluation (Accuracy, Confusion Matrix, Bar Graphs)
+
+To get **accuracy, confusion matrix, and bar graphs** (Accuracy, Precision, Recall, F1 per event type):
+
+1. **From project root** (uses app venv if you have one):
+   ```bash
+   cd app
+   source venv/bin/activate   # if you use a venv
+   pip install -r requirements.txt   # ensure matplotlib, scikit-learn, etc.
+   python generate_eval_data.py      # generates synthetic frames + ground_truth.json
+   python evaluate.py eval_data/synthetic
+   ```
+   Or run the script:
+   ```bash
+   chmod +x app/run_evaluation.sh
+   ./app/run_evaluation.sh
+   ```
+   (Run from `app` with venv activated so `cv2`, `torch`, `mediapipe` are available for `evaluate.py`.)
+
+2. **Output**
+   - `app/eval_data/synthetic/output/metrics.json` — **Overall accuracy** + per-event Accuracy, Precision, Recall, F1, TP/FP/FN/TN
+   - `app/eval_data/synthetic/output/metrics_bars.png` — **Bar chart: Accuracy, Precision, Recall, F1** for Overall and each event type
+   - `app/eval_data/synthetic/output/confusion_matrices.png` — 2×2 confusion matrix per event type
+   - `app/eval_data/synthetic/output/confusion_overall.png` — Overall Violation vs Normal confusion matrix
+
+For **real paper metrics**, replace synthetic data with your own: add `ground_truth.json` and frame paths under a custom eval dir (see `app/eval_data/README.md` for format).
 
 ## 🧪 Testing
 
