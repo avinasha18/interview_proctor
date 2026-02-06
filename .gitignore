@@ -7,3 +7,6 @@ node_modules
 venv
 app/eval_data/.matplotlib
 app/eval_data
+app/eval_data/.matplotlib
+app/temp
+server/temp
